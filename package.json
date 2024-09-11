@@ -1,0 +1,27 @@
+{
+  "name": "learnloop-api",
+  "version": "1.0.0",
+  "description": "API for the LearnLoop web app client",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dan-leach/learnloop-api.git"
+  },
+  "author": "https://github.com/dan-leach",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/dan-leach/learnloop-api/issues"
+  },
+  "homepage": "https://github.com/dan-leach/learnloop-api#readme",
+  "dependencies": {
+    "body-parser": "^1.20.3",
+    "cors": "^2.8.5",
+    "express": "^4.20.0",
+    "express-validator": "^7.2.0",
+    "mysql": "^2.18.1",
+    "mysql2": "^3.11.2"
+  }
+}
