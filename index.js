@@ -1,19 +1,23 @@
 const express = require("express");
 var cors = require("cors");
 const bodyParser = require("body-parser");
-const keys = require("./private/keys.json");
 
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-//required to get the client IP address as server behind proxy
+// Required to get the client IP address as server is behind a proxy
 app.set("trust proxy", 3);
 
 /**
- * Any browser GET requests redirects to the main website.
- * @param {Object} req - The request object.
- * @param {Object} res - The response object.
+ * Route handler for the root ("/") path.
+ * Any browser GET requests are advised to redirect to the main website.
+ *
+ * @name GET/
+ * @function
+ * @memberof module:app
+ * @param {express.Request} req - The request object.
+ * @param {express.Response} res - The response object.
  */
 app.get("/", (req, res) => {
   res.send(
@@ -21,23 +25,55 @@ app.get("/", (req, res) => {
   );
 });
 
+/**
+ * Route for providing the config file to the client.
+ *
+ * @name GET/config
+ * @function
+ * @memberof module:app
+ * @param {express.Request} req - The request object.
+ * @param {express.Response} res - The response object containing the config data in JSON format.
+ */
 app.get("/config", (req, res) => {
   const config = require("./config.json");
   res.json(config);
 });
 
 /**
+ * Routes for the feedback module.
+ *
+ * @module feedbackRoutes
+ */
+const feedbackRoutes = require("./modules/feedback/index.js");
+app.use("/feedback", feedbackRoutes);
+
+/**
+ * Routes for the interaction module.
+ *
+ * @module interactionRoutes
+ */
+const interactionRoutes = require("./modules/interaction/index.js");
+app.use("/interaction", interactionRoutes);
+
+/**
  * Default route for handling incorrect API routes.
- * @param {Object} req - The request object.
- * @param {Object} res - The response object.
+ *
+ * @name All Routes
+ * @function
+ * @memberof module:app
+ * @param {express.Request} req - The request object.
+ * @param {express.Response} res - The response object.
  */
 app.use("*", (req, res) => {
   res.status(400).json("Incorrect API route");
 });
 
 /**
- * Starts the server on port 3000.
- * @function
+ * Starts the Express server on port 3000.
+ *
+ * @function listen
+ * @memberof module:app
+ * @param {number} port - The port number the server will run on.
  */
 app.listen(3000, () => {
   console.log("Server is running on port 3000");
