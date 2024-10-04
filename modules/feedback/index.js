@@ -77,10 +77,10 @@ router.post(
 
       // Insert session into the database
       const { insertSession } = require("./routes/insertSession");
-      const { id, pin } = await insertSession(link, data);
+      const { id, leadPin } = await insertSession(link, data);
 
       // Respond with the session ID and pin
-      res.json({ id, pin });
+      res.json({ id, leadPin });
     } catch (error) {
       console.error("Error creating session ID:", error.message);
       res.status(500).json({ error: "Failed to create session ID" });

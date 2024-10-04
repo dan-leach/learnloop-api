@@ -1,12 +1,41 @@
 const crypto = require("crypto");
+const config = require("../../config.json");
 
 /**
- * Builds a unique ID based on the module type.
+ * Creates a unique short id and checks it is unique.
+ * async
+ * @param {Object} link - Database link or connection object.
+ * @param {string} module - The name of the module in use (e.g. feedback)
+ * @returns {Promise<string>} A unique short Id.
+ */
+const createUniqueId = async (link, module) => {
+  let id;
+  let isUnique;
+  let count = 0;
+
+  //get the name of the sessions table according to module
+  const tblName = config[module].tables.tblSessions;
+
+  do {
+    id = buildId(module.charAt(0)); //prefix is first letter of module name (e.g. f for feedback)
+    isUnique = await idIsUnique(link, tblName, id);
+    count++;
+    if (count > 100)
+      throw new Error(
+        "Unable to create unique feedback session ID after 100 attempts."
+      );
+  } while (!isUnique);
+
+  return id;
+};
+
+/**
+ * Builds a unique id based on the module type.
  *
  * @param {string} prefix - The prefix character to denonte the module.
- * @returns {string} The generated unique ID starting with the prefix character followed by 5 random characters.
+ * @returns {string} The generated unique id starting with the prefix character followed by 5 random characters.
  */
-const buildID = (prefix) => {
+const buildId = (prefix) => {
   const permittedChars = "23456789abcdeghjkmnpqrstuvwxyzABCDEGHJKMNPQRSTUVWXYZ";
   let id = prefix;
 
@@ -17,14 +46,14 @@ const buildID = (prefix) => {
 };
 
 /**
- * Check if a session ID exists in the sessions table.
+ * Check if a session id exists in the sessions table.
  * async
  * @param {mysql.Connection} link - The database connection.
  * @param {string} tblName - The name of the table to check the Id uniqueness against
  * @param {string} id - The session ID to check.
  * @returns {Promise<boolean>} - Returns false if the session ID exists, true if not.
  */
-const dbIdIsUnique = async (link, tblName, id) => {
+const idIsUnique = async (link, tblName, id) => {
   if (!link) {
     throw new Error("Database connection failed.");
   }
@@ -37,35 +66,6 @@ const dbIdIsUnique = async (link, tblName, id) => {
   } catch (error) {
     throw new Error("dbIDIsUnique database query failed: " + error.message);
   }
-};
-
-/**
- * Creates a unique short Id and checks it is unique.
- * async
- * @param {Object} link - Database link or connection object.
- * @param {string} module - The name of the module in use (e.g. feedback)
- * @returns {Promise<string>} A unique short Id.
- */
-const createUniqueId = async (link, module) => {
-  let id;
-  let isUnique;
-  let count = 0;
-
-  //get the name of the sessions table according to module
-  const config = require("../../config.json");
-  const tblName = config[module].tables.tblSessions;
-
-  do {
-    id = buildID(module.charAt(0)); //prefix is first letter of module name (e.g. f for feedback)
-    isUnique = await dbIdIsUnique(link, tblName, id);
-    count++;
-    if (count > 100)
-      throw new Error(
-        "Unable to create unique feedback session ID after 100 attempts."
-      );
-  } while (!isUnique);
-
-  return id;
 };
 
 /**
