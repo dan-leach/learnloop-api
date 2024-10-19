@@ -25,6 +25,16 @@ app.get("/", (req, res) => {
   );
 });
 
+/**
+ * Generates a QR code based on the provided ID in the query string and streams it as a PNG image.
+ *
+ * Query Parameters:
+ * @param {string} req.query.id - The unique identifier to encode into the QR code.
+ *
+ * Response:
+ * - Content-Type: image/png
+ * - Streams the QR code as a PNG image or returns a 500 error if generation fails.
+ */
 app.get("/qrcode", async (req, res) => {
   const QRCode = require("qrcode");
   const config = require("./config.json");
@@ -83,7 +93,9 @@ app.use("/interaction", interactionRoutes);
  * @param {express.Response} res - The response object.
  */
 app.use("*", (req, res) => {
-  res.status(400).json("Incorrect API route");
+  res.status(500).json({
+    errors: [{ msg: "Incorrect API route" }],
+  });
 });
 
 /**

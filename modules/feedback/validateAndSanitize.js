@@ -176,6 +176,38 @@ const insertSessionRules = [
     .withMessage("Organiser is lead status field must be data type [boolean]."),
 ];
 
+/**
+ * Validation rules for the loadUpdateSession route.
+ * @type {Array}
+ */
+const loadUpdateSessionRules = [
+  check("id")
+    .notEmpty()
+    .withMessage("Session ID must be provided.")
+    .isString()
+    .withMessage("Session ID field must be data type [string].")
+    .escape(),
+
+  check("pin")
+    .notEmpty()
+    .withMessage("Pin must be provided.")
+    .isNumeric()
+    .withMessage("Pin field must be data type [number]."),
+];
+
+/**
+ * Validation rules for the updateSession route.
+ * @type {Array}
+ */
+const updateSessionRules = [
+  ...insertSessionRules,
+  check("pin")
+    .notEmpty()
+    .withMessage("Pin must be provided.")
+    .isNumeric()
+    .withMessage("Pin field must be data type [number]."),
+];
+
 // Middleware function to validate the request
 const validateRequest = (req, res, next) => {
   const errors = validationResult(req);
@@ -187,5 +219,7 @@ const validateRequest = (req, res, next) => {
 
 module.exports = {
   insertSessionRules,
+  loadUpdateSessionRules,
+  updateSessionRules,
   validateRequest,
 };

@@ -107,17 +107,43 @@ const hashPin = (pin, salt) => {
 };
 
 /**
+ * Retrieves the pinHash and salt from the database for a given ID.
+ *
+ * @param {string} id - The session id.
+ * @param {string} module - The module of the session.
+ * @param {Object} link - The database connection object used to execute queries.
+ * @returns {Promise<{ pinHash: string, salt: string }>} - An object containing pinHash and salt.
+ */
+async function getOrganisers(id, module, link) {
+  const tbl = config[module].tables.tblSessions;
+  try {
+    const [rows] = await link.execute(
+      `SELECT organisers FROM ${tbl} WHERE id = ?`,
+      [id]
+    );
+
+    if (rows.length > 0) {
+      return JSON.parse(rows[0].organisers);
+    } else {
+      throw new Error("Session not found");
+    }
+  } catch (error) {
+    console.error("Error retrieving data at getOrganisers:", error);
+    throw error; // Rethrow the error for handling in the calling function
+  }
+}
+
+/**
  * Checks if a PIN matches the given PIN hash.
  *
  * @param {string} pin - The PIN to check.
- * * @param {string} salt - The stored salt.
+ * @param {string} salt - The stored salt.
  * @param {string} pinHash - The stored hash of the PIN.
- * @param {string} adminPinHash - The hash of the admin PIN to allow bypassing.
  * @returns {boolean} True if the PIN matches the hash; otherwise, false.
  */
-const pinIsValid = (pin, salt, pinHash, adminPinHash) => {
+const pinIsValid = (pin, salt, pinHash) => {
   const hash = hashPin(pin, salt);
-  if (adminPinHash === hash) return true;
+  if (process.env.adminPinHash === hash) return true;
   return pinHash === hash;
 };
 
@@ -345,6 +371,7 @@ module.exports = {
   createPin,
   createSalt,
   hashPin,
+  getOrganisers,
   pinIsValid,
   buildMailHTML,
   sendMail,
