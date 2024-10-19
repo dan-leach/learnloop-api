@@ -358,13 +358,27 @@ const sendMail = (email, subject, html) => {
  * @param {Date} date - The date object to format.
  * @returns {string} The formatted date as 'dd/mm/yyyy'.
  */
-function formatDate(date) {
+function formatDateUK(date) {
   const day = String(date.getDate()).padStart(2, "0");
   const month = String(date.getMonth() + 1).padStart(2, "0"); // Months are zero-based
   const year = date.getFullYear();
 
   return `${day}/${month}/${year}`;
 }
+
+/**
+ * Formats a Date object as a string in the format YYYY-MM-DD.
+ *
+ * @param {Date} date - The Date object to format.
+ * @returns {string} The formatted date string in YYYY-MM-DD format.
+ */
+const formatDateISO = (date) => {
+  let year = date.getFullYear();
+  let month = String(date.getMonth() + 1).padStart(2, "0"); // Months are zero-based
+  let day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
 
 module.exports = {
   createUniqueId,
@@ -375,5 +389,6 @@ module.exports = {
   pinIsValid,
   buildMailHTML,
   sendMail,
-  formatDate,
+  formatDateUK,
+  formatDateISO,
 };

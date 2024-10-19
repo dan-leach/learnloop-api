@@ -259,8 +259,10 @@ const buildMailBody = (
   isSubsession,
   seriesData
 ) => {
-  const { formatDate } = require("../../utilities/index");
-  if (!data.multipleDates) date = formatDate(data.date);
+  if (!data.multipleDates) {
+    const { formatDateUK } = require("../../utilities/index");
+    date = formatDateUK(data.date);
+  }
   let body = `
         <p>Hello ${name},<br><br>
         A feedback request has been successfully created${

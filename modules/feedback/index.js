@@ -79,7 +79,7 @@ router.post(
       link = await openDbConnection(dbConfig);
 
       // Insert session into the database
-      const { insertSsession } = require("./routes/insertSession");
+      const { insertSession } = require("./routes/insertSession");
       const { id, leadPin } = await insertSession(link, data);
 
       // Respond with the session ID and pin
