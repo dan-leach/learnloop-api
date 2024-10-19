@@ -25,6 +25,24 @@ app.get("/", (req, res) => {
   );
 });
 
+app.get("/qrcode", async (req, res) => {
+  const QRCode = require("qrcode");
+  const config = require("./config.json");
+
+  const url = config.client.url + "/" + req.query.id;
+
+  try {
+    // Set the content type for the PNG image
+    res.setHeader("Content-Type", "image/png");
+
+    // Stream the generated QR code as an image to the response
+    await QRCode.toFileStream(res, url);
+  } catch (err) {
+    console.error("Error generating QR code:", err);
+    res.status(500).send("Failed to generate QR code");
+  }
+});
+
 /**
  * Route for providing the config file to the client.
  *

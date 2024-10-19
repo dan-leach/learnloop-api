@@ -326,6 +326,20 @@ const sendMail = (email, subject, html) => {
     });
 };
 
+/**
+ * Formats a Date object as 'dd/mm/yyyy'.
+ *
+ * @param {Date} date - The date object to format.
+ * @returns {string} The formatted date as 'dd/mm/yyyy'.
+ */
+function formatDate(date) {
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0"); // Months are zero-based
+  const year = date.getFullYear();
+
+  return `${day}/${month}/${year}`;
+}
+
 module.exports = {
   createUniqueId,
   createPin,
@@ -334,4 +348,5 @@ module.exports = {
   pinIsValid,
   buildMailHTML,
   sendMail,
+  formatDate,
 };

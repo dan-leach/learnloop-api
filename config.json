@@ -1,9 +1,11 @@
 {
   "version": "5.3",
+  "devMode": true,
   "author": "Dan Leach",
   "web": "https://github.com/dan-leach",
   "repo": "https://github.com/dan-leach/learnloop/tree/v5",
   "email": "mail@learnloop.co.uk",
+  "noreplyemail": "noreply@learnloop.co.uk",
   "feedback": {
     "create": {
       "questions": {
@@ -45,7 +47,7 @@
       }
     },
     "tables": {
-      "tblSessions": "tbl_feedback_sessions_v5"
+      "tblSessions": "tbl_feedback_sessions_v6"
     }
   },
   "interaction": {

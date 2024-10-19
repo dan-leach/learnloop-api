@@ -259,13 +259,15 @@ const buildMailBody = (
   isSubsession,
   seriesData
 ) => {
+  const { formatDate } = require("../../utilities/index");
+  if (!data.multipleDates) date = formatDate(data.date);
   let body = `
         <p>Hello ${name},<br><br>
         A feedback request has been successfully created${
           isLead ? "" : " by " + leadName
         } on <a href='${appURL}'>LearnLoop</a> for your session '${
     data.title
-  }' delivered on ${data.multipleDates ? "multiple dates" : data.date}. `;
+  }' delivered on ${data.multipleDates ? "multiple dates" : date}. `;
 
   if (isSubsession) {
     body += `This session is part of the series '${seriesData.title}'. `;
