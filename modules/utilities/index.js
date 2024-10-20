@@ -302,9 +302,6 @@ const buildMailHTML = (
 const sendMail = (email, subject, html) => {
   const nodemailer = require("nodemailer");
 
-  // Load DKIM and email credentials
-  const keys = require("../../private/keys.json");
-
   // Configure the email transporter using Nodemailer
   const transporter = nodemailer.createTransport({
     host: "mail.learnloop.co.uk",
@@ -312,11 +309,11 @@ const sendMail = (email, subject, html) => {
     secure: true, // true for port 465, false for other ports
     auth: {
       user: "noreply@learnloop.co.uk",
-      pass: keys.emailKey,
+      pass: process.env.emailKey,
     },
     dkim: {
       domainName: "learnloop.co.uk",
-      privateKey: keys.emailDkimPrivateKey,
+      privateKey: process.env.emailDkimPrivateKey,
     },
   });
 

@@ -15,7 +15,6 @@ const {
 } = require("./validateAndSanitize");
 
 const mysql = require("mysql2/promise");
-const keys = require("../../private/keys.json");
 const { json } = require("body-parser");
 
 /**
@@ -29,7 +28,7 @@ const { json } = require("body-parser");
 const dbConfig = {
   host: "localhost",
   user: "learnloop_app",
-  password: keys.dbKey,
+  password: process.env.dbKey,
   database: "learnloop_data",
 };
 
