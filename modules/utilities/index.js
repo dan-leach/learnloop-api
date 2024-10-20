@@ -128,7 +128,6 @@ async function getOrganisers(id, module, link) {
       throw new Error("Session not found");
     }
   } catch (error) {
-    console.error("Error retrieving data at getOrganisers:", error);
     throw error; // Rethrow the error for handling in the calling function
   }
 }
@@ -347,7 +346,7 @@ const sendMail = (email, subject, html) => {
       return true; // Return success status
     })
     .catch((error) => {
-      console.error("sendMail failed", error); // Log any errors that occur during email sending
+      throw error;
       return false; // Return failure status
     });
 };

@@ -199,14 +199,7 @@ const loadUpdateSessionRules = [
  * Validation rules for the updateSession route.
  * @type {Array}
  */
-const updateSessionRules = [
-  ...insertSessionRules,
-  check("pin")
-    .notEmpty()
-    .withMessage("Pin must be provided.")
-    .isNumeric()
-    .withMessage("Pin field must be data type [number]."),
-];
+const updateSessionRules = [...insertSessionRules, ...loadUpdateSessionRules];
 
 // Middleware function to validate the request
 const validateRequest = (req, res, next) => {

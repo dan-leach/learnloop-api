@@ -14,20 +14,17 @@ const loadUpdateSession = async (link, id) => {
     const { formatDateISO } = require("../../utilities/index");
     session.date = formatDateISO(session.date);
 
-    const subsessionIDs = JSON.parse(session.subsessions);
+    const subsessionIDs = session.subsessions;
 
-    session.subsessions = await loadSubsessionDetails(link, subsessionIDs);
+    session.subsessions = await selectSubsessionDetails(link, subsessionIDs);
 
-    session.questions = JSON.parse(session.questions);
-
-    //parse the organisers JSON, removing non-required properties
-    session.organisers = JSON.parse(session.organisers).map(
+    //remove non-required properties
+    session.organisers = session.organisers.map(
       ({ pinHash, salt, lastSent, ...rest }) => rest
     );
 
     return session;
   } catch (error) {
-    console.error("Error loading session data:", error);
     throw error;
   }
 };
@@ -49,11 +46,14 @@ const selectSessionDetails = async (link, id) => {
     );
 
     if (rows.length > 0) {
-      return rows[0]; // Return the first row if found
+      const session = rows[0];
+      ["subsessions", "questions", "organisers"].forEach((field) => {
+        if (session[field]) session[field] = JSON.parse(session[field]);
+      });
+      return session;
     }
-    throw new Error("Session not found"); // Throw error if no session is found
+    throw new Error("Session not found."); // Throw error if no session is found
   } catch (error) {
-    console.error("Error selecting session data:", error);
     throw error; // Re-throw the error to handle it in higher-level code
   }
 };
@@ -66,7 +66,7 @@ const selectSessionDetails = async (link, id) => {
  * @returns {Promise<Array<Object>>} A promise that resolves to an array of subsession details.
  * @throws Will throw an error if any subsession retrieval fails.
  */
-const loadSubsessionDetails = async (link, subsessionIDs) => {
+const selectSubsessionDetails = async (link, subsessionIDs) => {
   try {
     // Use Promise.all to fetch subsession details concurrently for better performance
     const subsessions = await Promise.all(
@@ -75,6 +75,8 @@ const loadSubsessionDetails = async (link, subsessionIDs) => {
 
     // Remove non-required properties from each subsession object
     const cleanedSubsessions = subsessions.map((subsession) => {
+      // Extract the email from the first organiser (subsession will have only one organiser)
+      const email = subsession.organisers[0].email;
       const {
         organisers,
         attendance,
@@ -87,12 +89,11 @@ const loadSubsessionDetails = async (link, subsessionIDs) => {
         subsessions,
         ...rest
       } = subsession; // Destructure and exclude listed fields
-      return rest;
+      return { ...rest, email };
     });
 
     return cleanedSubsessions;
   } catch (error) {
-    console.error("Error loading subsession details:", error);
     throw error; // Re-throw the error to handle it in higher-level code
   }
 };

@@ -46,12 +46,10 @@ const openDbConnection = async (dbConfig) => {
   try {
     // Create a promise-based connection to the database
     const link = await mysql.createConnection(dbConfig);
-    console.log("Database connection established");
 
     return link; // Return the connection object
-  } catch (err) {
-    console.error("Error connecting to the database:", err.stack);
-    throw new Error("Database connection failed");
+  } catch (error) {
+    throw error;
   }
 };
 
@@ -85,9 +83,9 @@ router.post(
       // Respond with the session ID and pin
       res.json({ id, leadPin });
     } catch (error) {
-      console.error("Error creating new session:", error.message);
+      console.error(new Date().toISOString(), "insertSession error:", error);
       res.status(500).json({
-        errors: [{ msg: "Failed to create new session: " + error.message }],
+        errors: [{ msg: "Failed to create session: " + error.message }],
       });
     } finally {
       // Close the database connection
@@ -125,9 +123,18 @@ router.post(
         pinIsValid(data.pin, organiser.salt, organiser.pinHash)
       );
 
+      // Check the pin is valid for an organiser
       if (!user) {
         res.status(401).json({
-          errors: [{ msg: "Invalid PIN" }],
+          errors: [{ msg: "Invalid PIN." }],
+        });
+        return;
+      }
+
+      //check the organiser has editing rights
+      if (!user.canEdit) {
+        res.status(401).json({
+          errors: [{ msg: "User does not have editing rights." }],
         });
         return;
       }
@@ -136,10 +143,14 @@ router.post(
       const { loadUpdateSession } = require("./routes/loadUpdateSession");
       const session = await loadUpdateSession(link, data.id);
 
-      // Respond with the session ID and pin
+      // Respond with the session details
       res.json(session);
     } catch (error) {
-      console.error("Error loading session details:", error.message);
+      console.error(
+        new Date().toISOString(),
+        "loadUpdateSession error:",
+        error
+      );
       res.status(500).json({
         errors: [{ msg: "Failed to load session details: " + error.message }],
       });
@@ -173,17 +184,36 @@ router.post(
       // Open database connection
       link = await openDbConnection(dbConfig);
 
-      const getPinHashAndSalt = require("../utilities/index");
-      const { pinHash, salt } = getPinHashAndSalt(data.id, "feedback", link);
+      const { getOrganisers, pinIsValid } = require("../utilities/index");
+      const organisers = await getOrganisers(data.id, "feedback", link);
+      const user = organisers.find((organiser) =>
+        pinIsValid(data.pin, organiser.salt, organiser.pinHash)
+      );
 
-      // Insert session into the database
-      //const { insertSession } = require("./routes/insertSession");
-      //const { id, leadPin } = await insertSession(link, data);
+      // Check the pin is valid for an organiser
+      if (!user) {
+        res.status(401).json({
+          errors: [{ msg: "Invalid PIN." }],
+        });
+        return;
+      }
+
+      //check the organiser has editing rights
+      if (!user.canEdit) {
+        res.status(401).json({
+          errors: [{ msg: "User does not have editing rights." }],
+        });
+        return;
+      }
+
+      // Update session in the database
+      const { updateSession } = require("./routes/updateSession");
+      await updateSession(link, data, user);
 
       // Respond with the session ID and pin
-      res.json({ pinHash, salt });
+      res.json(true);
     } catch (error) {
-      console.error("Error updating session:", error.message);
+      console.error(new Date().toISOString(), "updateSession error:", error);
       res.status(500).json({
         errors: [{ msg: "Failed to update session: " + error.message }],
       });

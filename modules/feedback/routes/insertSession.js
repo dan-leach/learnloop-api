@@ -41,7 +41,7 @@ const insertSession = async (
       organiser.pinHash = hashPin(pin, salt);
       organiser.salt = salt;
       organiser.lastSent = null;
-      organiser.notifications = organiser.isLead ? data.notifications : true;
+      organiser.notifications = true;
 
       // Prepare email data for the organiser
       mails.push({
@@ -50,7 +50,6 @@ const insertSession = async (
         pin: pin,
         isLead: organiser.isLead,
         canEdit: organiser.canEdit,
-        notifications: organiser.notifications,
       });
     }
 
@@ -63,8 +62,8 @@ const insertSession = async (
 
   if (isSubsession) {
     // If this is a subsession, inherit data from the parent series
-    data.date = seriesData.date;
-    data.multipleDates = seriesData.multipleDates;
+    data.date = "0000-00-00";
+    data.multipleDates = false;
     data.questions = []; // Subsessions do not have custom questions
     data.certificate = false; // Subsessions do not directly provide certificates
     data.attendance = false; // Subsessions do not directly log attendance
@@ -93,7 +92,6 @@ const insertSession = async (
         pin: pin,
         isLead: data.organisers[0].isLead,
         canEdit: data.organisers[0].canEdit,
-        notifications: data.organisers[0].notifications,
       });
     }
   }
@@ -215,7 +213,7 @@ const insertSessionIntoDatabase = async (
       id,
       data.name,
       data.title,
-      data.multipleDates ? "0000-00-00" : data.date, //default value in case of multipleDates
+      data.multipleDates || isSubsession ? "0000-00-00" : data.date, //default value in case of multipleDates
       data.multipleDates,
       data.organisers,
       data.questions,
@@ -226,7 +224,7 @@ const insertSessionIntoDatabase = async (
     ]);
     return true;
   } catch (error) {
-    throw new Error("Failed to insert session into database: " + error.message);
+    throw error;
   }
 };
 
@@ -259,17 +257,20 @@ const buildMailBody = (
   isSubsession,
   seriesData
 ) => {
-  if (!data.multipleDates) {
-    const { formatDateUK } = require("../../utilities/index");
-    date = formatDateUK(data.date);
-  }
+  const { formatDateUK } = require("../../utilities/index");
+  let multipleDates = isSubsession
+    ? seriesData.multipleDates
+    : data.multipleDates;
+  let date;
+  if (!multipleDates)
+    date = formatDateUK(isSubsession ? seriesData.date : data.date);
   let body = `
         <p>Hello ${name},<br><br>
         A feedback request has been successfully created${
           isLead ? "" : " by " + leadName
         } on <a href='${appURL}'>LearnLoop</a> for your session '${
     data.title
-  }' delivered on ${data.multipleDates ? "multiple dates" : date}. `;
+  }' delivered on ${multipleDates ? "multiple dates" : date}. `;
 
   if (isSubsession) {
     body += `This session is part of the series '${seriesData.title}'. `;
@@ -342,12 +343,7 @@ const buildMailBody = (
   body += `
         <p style='font-size:1.5em'>View your feedback</p>
         <p>Go to <a href='${appURL}/feedback/view/${id}'>${shortenedAppURL}/feedback/view/${id}</a> and enter your PIN to retrieve submitted feedback.<br>
-        ${
-          data.notifications
-            ? "Email notification of feedback submissions is <strong>enabled</strong>. "
-            : "Email notification of feedback submissions is <strong>disabled</strong>. "
-        }
-        <a href='${appURL}/feedback/notifications/${id}'>Update your notification preferences</a>.<br>
+        Email notification of feedback submissions is <strong>enabled</strong>. <a href='${appURL}/feedback/notifications/${id}'>Update your notification preferences</a>.<br>
         ${
           !isSubsession && data.attendance
             ? `The attendance register is <strong>enabled</strong>. <a href='${appURL}/feedback/attendance/${id}'>View attendance register</a>.<br>`
