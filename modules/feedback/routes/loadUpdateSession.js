@@ -1,4 +1,5 @@
 const config = require("../../../config.json");
+const { formatDateISO } = require("../../utilities/index");
 
 /**
  * Updates a session in the database and sends notification emails to organisers.
@@ -11,7 +12,6 @@ const loadUpdateSession = async (link, id) => {
   try {
     const session = await selectSessionDetails(link, id);
 
-    const { formatDateISO } = require("../../utilities/index");
     session.date = formatDateISO(session.date);
 
     const subsessionIDs = session.subsessions;

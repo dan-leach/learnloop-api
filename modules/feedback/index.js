@@ -210,8 +210,7 @@ router.post(
       const { updateSession } = require("./routes/updateSession");
       await updateSession(link, data, user);
 
-      // Respond with the session ID and pin
-      res.json(true);
+      res.json("The session was updated.");
     } catch (error) {
       console.error(new Date().toISOString(), "updateSession error:", error);
       res.status(500).json({

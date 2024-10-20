@@ -1,4 +1,17 @@
 const config = require("../../../config.json");
+const { insertSession, emailOrganiserInsert } = require("./insertSession");
+const {
+  createPin,
+  createSalt,
+  hashPin,
+  buildMailHTML,
+  sendMail,
+  formatDateISO,
+} = require("../../utilities/index");
+
+// Define application URLs
+const appURL = config.client.url;
+const shortenedAppURL = appURL.replace("https://", ""); // Create a shortened version of the URL to look better on emails
 
 /**
  * Updates a session in the database and sends notification emails to organisers.
@@ -13,7 +26,7 @@ const updateSession = async (link, data, user) => {
     subsessionEdit: [],
     subsessionRemove: [],
     subsessionAdd: [],
-    sessionEdit: [],
+    nonLeadSessionEdit: [],
     organiserEdit: [],
     organiserRemove: [],
     organiserAdd: [],
@@ -22,6 +35,16 @@ const updateSession = async (link, data, user) => {
   const subsessionIds = [];
 
   const oldSessionDetails = await getOldSessionDetails(data.id, link);
+
+  const leadOrganiser = oldSessionDetails.organisers.find(
+    (oldOrganiser) => oldOrganiser.isLead === true
+  );
+
+  if (leadOrganiser.email != user.email)
+    mails.nonLeadSessionEdit.push({
+      email: leadOrganiser.email,
+      name: leadOrganiser.name,
+    });
 
   data.date = new Date(data.date);
 
@@ -50,7 +73,6 @@ const updateSession = async (link, data, user) => {
       subsessionIds.push(subsession.id);
     } else {
       //insertNew
-      const { insertSession } = require("./insertSession");
       data.leadName = user.name;
       const { id } = await insertSession(link, subsession, true, data);
       subsessionIds.push(id);
@@ -100,12 +122,6 @@ const updateSession = async (link, data, user) => {
       organiser.notifications = oldOrganiserDetails.notifications;
     } else {
       //new organiser
-      const {
-        createPin,
-        createSalt,
-        hashPin,
-      } = require("../../utilities/index");
-
       const pin = createPin();
       const salt = createSalt();
       organiser.pinHash = hashPin(pin, salt);
@@ -120,37 +136,139 @@ const updateSession = async (link, data, user) => {
     }
   }
 
+  //remove any old organisers that are not included in the update
+  const newOrganiserEmails = data.organisers.map(
+    (organiser) => organiser.email
+  );
+  for (let oldOrganiser of oldSessionDetails.organisers) {
+    if (!newOrganiserEmails.includes(oldOrganiser.email)) {
+      mails.organiserRemove.push({
+        name: oldOrganiser.name,
+        email: oldOrganiser.email,
+      });
+    }
+  }
+
   // Insert the session into the database
   await updateSessionInDatabase(link, data, subsessionIds);
 
-  return true;
-  // Send emails to all organisers
-  for (let mail of mails) {
-    emailOrganiser(
+  //let the lead organiser know if someone else has updated the session
+  for (let recipient of mails.nonLeadSessionEdit) {
+    emailOrganiserUpdate(
       data,
-      id,
-      mail.pin,
-      mail.name,
-      mail.email,
-      mail.isLead,
-      mail.canEdit,
-      isSubsession,
-      seriesData
+      user,
+      recipient,
+      buildMailBodyNonLeadSessionEdit,
+      "Feedback request updated"
+    );
+  }
+
+  //let organisers who have been added know
+  if (mails.organiserAdd.length) {
+    for (let recepient of mails.organiserAdd) {
+      data.leadName = leadOrganiser.name;
+      emailOrganiserInsert(
+        data,
+        data.id,
+        recepient.pin,
+        recepient.name,
+        recepient.email,
+        false,
+        recepient.canEdit
+      );
+    }
+  }
+
+  //let organisers who's name or canEdit status has changed know
+  for (let recepient of mails.organiserEdit) {
+    emailOrganiserUpdate(
+      data,
+      user,
+      recepient,
+      buildMailBodyOrganiserEdit,
+      "Organiser status updated"
+    );
+  }
+
+  //let organisers who've been removed know
+  for (let recepient of mails.organiserRemove) {
+    emailOrganiserUpdate(
+      data,
+      user,
+      recepient,
+      buildMailBodyOrganiserRemove,
+      "Organiser status update"
+    );
+  }
+
+  //entirely new subsessions are get mailed via the insertSession route. This loop deals with existing subsession which have an email added
+  for (let recepient of mails.subsessionAdd) {
+    emailOrganiserInsert(
+      {
+        title: recepient.subsession.title,
+      },
+      recepient.subsession.id, //subsession id
+      recepient.pin,
+      recepient.name,
+      recepient.email,
+      false,
+      false,
+      true,
+      {
+        ...data,
+        leadName: leadOrganiser.name,
+      }
+    );
+  }
+
+  //let facilitators of subsessions which have been changed know
+  for (let recepient of mails.subsessionEdit) {
+    emailOrganiserUpdate(
+      recepient,
+      user,
+      recepient,
+      buildMailBodySubsessionEdit,
+      "Feedback request updated",
+      data
+    );
+  }
+
+  //let facilitators of subsessions which have been removed know
+  for (let recepient of mails.subsessionRemove) {
+    console.error(recepient);
+    emailOrganiserUpdate(
+      recepient,
+      user,
+      recepient,
+      buildMailBodySubsessionRemove,
+      "Feedback request closed",
+      data
     );
   }
 
   return true;
 };
 
+/**
+ * Retrieves and processes old session details, including its subsessions.
+ *
+ * @param {number|string} id - The ID of the session to retrieve.
+ * @param {Object} link - The database connection object.
+ * @returns {Promise<Object>} The processed session object with formatted date and subsession details.
+ * @throws Will throw an error if the session or subsessions retrieval fails.
+ */
 const getOldSessionDetails = async (id, link) => {
+  // Get session details by ID
   const session = await selectSessionDetails(link, id);
 
-  const { formatDateISO } = require("../../utilities/index");
+  // Format session date to ISO format
   session.date = formatDateISO(session.date);
 
-  const subsessionIds = session.subsessions;
-
-  session.subsessions = await selectSubsessionDetails(link, subsessionIds);
+  // Fetch and assign subsession details
+  session.subsessions = await selectSubsessionDetails(
+    link,
+    session.subsessions
+  );
 
   return session;
 };
@@ -204,34 +322,40 @@ const selectSubsessionDetails = async (link, subsessionIds) => {
   }
 };
 
+/**
+ * Updates subsession details, handles email change restrictions, and updates organiser data.
+ *
+ * @param {Object} subsession - The new subsession details.
+ * @param {Object} oldSubsessionDetails - The existing subsession details.
+ * @param {Object} mails - An object to push mail recepients and mail variables.
+ * @param {Object} link - The database connection object.
+ * @returns {Promise<void>} Resolves when subsession details have been updated in the database.
+ */
 const updateSubsessionDetails = async (
   subsession,
   oldSubsessionDetails,
   mails,
   link
 ) => {
-  //subsession has been changed
-  if (
-    oldSubsessionDetails.organisers[0].email?.length &&
-    oldSubsessionDetails.organisers[0].email != subsession.email
-  ) {
+  const oldEmail = oldSubsessionDetails.organisers?.[0]?.email || "";
+  const newEmail = subsession.email;
+
+  // Check if email change is invalid
+  if (oldEmail.length && oldEmail !== newEmail) {
     throw new Error(
       "Cannot change email address for an existing subsession which already has an email address set."
     );
   }
-  if (
-    !oldSubsessionDetails.organisers[0].email?.length &&
-    subsession.email.length
-  ) {
-    //added an email to a subsession which previously didn't have one (and maybe some other changes)
-    // Generate organiser data for the subsession
-    const { createPin, createSalt, hashPin } = require("../../utilities/index");
+
+  // Handle adding a new email to a subsession without a previous email
+  if (!oldEmail.length && newEmail.length) {
     const pin = createPin();
     const salt = createSalt();
+
     subsession.organisers = [
       {
         name: subsession.name,
-        email: subsession.email,
+        email: newEmail,
         isLead: false,
         canEdit: false,
         pinHash: hashPin(pin, salt),
@@ -241,218 +365,176 @@ const updateSubsessionDetails = async (
       },
     ];
 
+    // Add mail data for new subsession organiser
     mails.subsessionAdd.push({
       name: subsession.name,
-      email: subsession.email,
+      email: newEmail,
       pin: pin,
-      notifications: true,
+      subsession: subsession,
     });
   } else {
-    //made some changes besides email
+    // Handle other changes besides email
     subsession.organisers = oldSubsessionDetails.organisers;
-
-    mails.subsessionEdit.push({
-      name: subsession.name,
-      email: subsession.email,
-      notifications: oldSubsessionDetails.organisers[0].notifications,
-    });
+    mails.subsessionEdit.push(subsession);
   }
-  updateSubsessionDetailsInDatabase(link, subsession);
+
+  // Update subsession details in the database
+  return updateSubsessionDetailsInDatabase(link, subsession);
 };
 
+/**
+ * Updates subsession details in the database.
+ *
+ * @param {Object} link - The MySQL connection object.
+ * @param {Object} subsession - The subsession details to update.
+ * @returns {Promise<void>} Resolves when the update is complete.
+ */
 const updateSubsessionDetailsInDatabase = async (link, subsession) => {
-  try {
-    // Execute the update query
-    const query = `UPDATE ${config.feedback.tables.tblSessions} SET name = ?, title = ?, organisers = ? WHERE id = ?`;
-    const { name, title, organisers, id } = subsession;
-    await link.execute(query, [name, title, organisers, id]);
-  } catch (error) {
-    throw error;
-  }
+  const { name, title, organisers, id } = subsession;
+  const tableName = config.feedback.tables.tblSessions;
+
+  // Construct the update query
+  const query = `UPDATE ${tableName} SET name = ?, title = ?, organisers = ? WHERE id = ?`;
+
+  // Execute the update query with the provided subsession details
+  await link.execute(query, [name, title, organisers, id]);
 };
 
+/**
+ * Removes an old subsession by marking it as closed and adding to the mail removal list.
+ *
+ * @param {Object} oldSubsessionDetails - The old subsession details to process.
+ * @param {Object} mails - An object to push mail recepients and mail variables.
+ * @param {Object} link - The database connection object.
+ * @returns {Promise<void>} Resolves when the subsession has been removed and marked as closed.
+ */
 const removeOldSubsession = async (oldSubsessionDetails, mails, link) => {
-  try {
+  // Add subsession to the removal list for mailing
+  if (oldSubsessionDetails.organisers[0].email)
     mails.subsessionRemove.push({
+      title: oldSubsessionDetails.title,
       name: oldSubsessionDetails.name,
-      email: oldSubsessionDetails.email,
+      email: oldSubsessionDetails.organisers[0].email,
     });
-    closeSessionInDatabase(link, subsession.id);
-  } catch (error) {
-    throw error;
-  }
+
+  // Mark the subsession as closed in the database
+  await closeSessionInDatabase(link, oldSubsessionDetails.id);
 };
 
+/**
+ * Marks a session as closed in the database by setting the 'closed' field to true.
+ *
+ * @param {Object} link - The MySQL connection object.
+ * @param {number|string} id - The ID of the session to mark as closed.
+ * @returns {Promise<void>} Resolves when the session is successfully closed.
+ */
 const closeSessionInDatabase = async (link, id) => {
-  try {
-    // Execute the update query
-    const query = `UPDATE ${config.feedback.tables.tblSessions} SET closed = true WHERE id = ?`;
-    await link.execute(query, [id]);
-  } catch (error) {
-    throw error;
-  }
+  const tableName = config.feedback.tables.tblSessions;
+
+  // Construct the update query
+  const query = `UPDATE ${tableName} SET closed = true WHERE id = ?`;
+
+  // Execute the query with the provided session ID
+  await link.execute(query, [id]);
+};
+
+/**
+ * Updates session details in the database.
+ *
+ * @param {Object} link - The MySQL connection object.
+ * @param {Object} data - The session data to be updated.
+ * @param {Array<number|string>} subsessionIds - An array of subsession IDs associated with the session.
+ * @returns {Promise<void>} Resolves when the session is successfully updated.
+ */
+const updateSessionInDatabase = async (link, data, subsessionIds) => {
+  const tableName = config.feedback.tables.tblSessions;
+
+  // Destructure the session data object
+  const {
+    name,
+    title,
+    date,
+    multipleDates,
+    organisers,
+    questions,
+    certificate,
+    attendance,
+    id,
+  } = data;
+
+  // Construct the update query
+  const query = `UPDATE ${tableName} SET name = ?, title = ?, date = ?, multipleDates = ?, organisers = ?, questions = ?, certificate = ?, subsessions = ?, attendance = ? WHERE id = ?`;
+
+  // Execute the query with the provided session data and subsession IDs
+  await link.execute(query, [
+    name,
+    title,
+    date,
+    multipleDates,
+    organisers,
+    questions,
+    certificate,
+    subsessionIds,
+    attendance,
+    id,
+  ]);
 };
 
 /**
  * Sends an email to an organiser with details about the session and their PIN.
  *
  * @param {object} data - The session data, including title, organisers, and other relevant information.
- * @param {string} id - The unique ID of the session.
- * @param {string} pin - The PIN for the organiser to access the session.
- * @param {string} name - The name of the organiser.
- * @param {string} email - The email address of the organiser.
- * @param {boolean} isLead - Whether the organiser is the lead organiser of the session.
- * @param {boolean} canEdit - Whether the organiser has editing privileges.
- * @param {boolean} [isSubsession=false] - Flag indicating whether the email is for a subsession of a series.
- * @param {object} [seriesData={}] - Data from the parent series, if this is a subsession.
+ * @param {object} user - The user who performed the update.
+ * @param {string} recepient - The organiser to be emailed.
+ * @param {Function} mailBodyBuilder - The function to build the email body (e.g., buildMailBodyNonLeadSessionEdit).
+ * @param {string} heading - The heading for the email
  * @returns {Promise<boolean>} - Returns `true` if the email was sent successfully, `false` otherwise.
  */
-const emailOrganiser = (
+const emailOrganiserUpdate = (
   data,
-  id,
-  pin,
-  name,
-  email,
-  isLead,
-  canEdit,
-  isSubsession = false,
-  seriesData = {}
+  user,
+  recepient,
+  mailBodyBuilder,
+  heading,
+  seriesData
 ) => {
-  // Determine the lead organiser's name (in subsession use the parent sessions lead)
-  const leadName = isSubsession ? seriesData.leadName : data.leadName;
-
-  // Define application URLs
-  const appURL = config.client.url;
-  const shortenedAppURL = appURL.replace("https://", ""); // Create a shortened version of the URL to look better on emails
-
   // Build the body of the email
-  const body = buildMailBody(
-    id,
-    pin,
-    name,
-    isLead,
-    canEdit,
-    leadName,
-    appURL,
-    shortenedAppURL,
-    data,
-    isSubsession,
-    seriesData
-  );
+  const body = mailBodyBuilder(data, user, recepient, seriesData);
 
   // Email heading and subject
-  let heading = `Feedback request created`;
   let subject = `${heading}: ${data.title}`;
 
   // Import utility function to build HTML structure for the email
-  const { buildMailHTML } = require("../../utilities/index");
+
   const html = buildMailHTML(
     subject,
     heading,
     body,
-    isLead,
+    false,
     appURL,
     shortenedAppURL
   );
 
   //import the sendMail utility then dispatch the email
-  const { sendMail } = require("../../utilities/index");
-  sendMail(email, subject, html);
-};
-
-const updateSessionInDatabase = async (link, data, subsessionIds) => {
-  try {
-    // Execute the update query
-    const query = `UPDATE ${config.feedback.tables.tblSessions} SET name = ?, title = ?, date = ?, multipleDates = ?, organisers = ?, questions = ?, certificate = ?, subsessions = ?, attendance = ? WHERE id = ?`;
-    const {
-      name,
-      title,
-      date,
-      multipleDates,
-      organisers,
-      questions,
-      certificate,
-      attendance,
-      id,
-    } = data;
-    await link.execute(query, [
-      name,
-      title,
-      date,
-      multipleDates,
-      organisers,
-      questions,
-      certificate,
-      subsessionIds,
-      attendance,
-      id,
-    ]);
-  } catch (error) {
-    throw error;
-  }
+  sendMail(recepient.email, subject, html);
 };
 
 /**
- * Constructs the body of the feedback request email.
+ * Constructs the body of the email sent to the lead organiser when a non-lead organiser updates the session.
  *
- * @param {string} id - The unique identifier for the session.
- * @param {string} pin - The PIN associated with the session.
- * @param {string} name - The name of the email recipient.
- * @param {boolean} isLead - Indicates if the recipient is the lead organiser for the session.
- * @param {boolean} canEdit - Indicates if the recipient has editing rights for the session.
- * @param {string} leadName - The name of the lead organiser (if the recipient is not the lead).
- * @param {string} appURL - The base URL of the application for generating links.
- * @param {string} shortenedAppURL - The shortened version of the application URL.
  * @param {Object} data - The session data, including title, date, organisers, and questions.
- * @param {boolean} isSubsession - Indicates if the session is a subsession.
- * @param {Object} seriesData - Data related to the parent series, if applicable.
+ * @param {object} user - The user who performed the update.
+ * @param {string} recepient - The email recipient.
  * @returns {string} - The constructed HTML body of the email.
  */
-const buildMailBody = (
-  id,
-  pin,
-  name,
-  isLead,
-  canEdit,
-  leadName,
-  appURL,
-  shortenedAppURL,
-  data,
-  isSubsession,
-  seriesData
-) => {
-  const { formatDateUK } = require("../../utilities/index");
-  if (!data.multipleDates) date = formatDateUK(data.date);
+const buildMailBodyNonLeadSessionEdit = (data, user, recepient) => {
   let body = `
-        <p>Hello ${name},<br><br>
-        A feedback request has been successfully created${
-          isLead ? "" : " by " + leadName
-        } on <a href='${appURL}'>LearnLoop</a> for your session '${
-    data.title
-  }' delivered on ${data.multipleDates ? "multiple dates" : date}. `;
-
-  if (isSubsession) {
-    body += `This session is part of the series '${seriesData.title}'. `;
-  } else {
-    if (isLead) {
-      body += `You are the lead organsier for this event. This means your access to the session cannot be removed and you have editing rights. `;
-    } else {
-      if (canEdit) {
-        body += `You have been given editing rights for this session. `;
-      } else {
-        body += `You have been given viewing rights for this session. `;
-      }
-    }
-  }
-
-  body += `</p><p>Please keep this email for future reference.</p>
-        <span style='font-size:2em'>Your session ID is <strong>${id}</strong><br>
-        Your session PIN is <strong>${pin}</strong></span><br>
-        Do not share your PIN or this email with attendees. 
-        <a href='${appURL}/feedback/resetPIN/${id}'>Reset your PIN</a>.<br>
+        <p>Hello ${recepient.name},<br><br>
+        Your feedback request on <a href='${appURL}'>LearnLoop</a> for your session '${data.title}' has been updated by ${user.name}. You are the lead organsier for this event. This means your access to the session cannot be removed and you have editing rights.<br><br>
+        <span style='font-size:2em'>Your session ID is <strong>${data.id}</strong></span><br>
+        Refer to your session creation email for your PIN, or <a href='${appURL}/feedback/resetPIN/${data.id}'>reset your PIN</a>.<br><br>
     `;
 
-  // Use join to cleanly concatenate array elements
   if (data.subsessions && data.subsessions.length) {
     if (data.subsessions.length === 1) {
       body += `Feedback will be collected on the session ${data.subsessions[0].title}.<br>`;
@@ -466,7 +548,6 @@ const buildMailBody = (
     }
   }
 
-  // Simplify additional questions section
   if (data.questions && data.questions.length) {
     body += `The following additional questions will be asked:<ul>
             ${data.questions
@@ -475,44 +556,93 @@ const buildMailBody = (
             </ul>`;
   }
 
-  if (canEdit) {
-    body += `<a href='${appURL}/feedback/edit/${id}'>Edit your session</a>. This option is only available <strong>before</strong> feedback has been submitted.`;
-  }
-
   body += `
-        <p style='font-size:1.5em'>How to direct attendees to the feedback form</p>
-        ${
-          isSubsession
-            ? `
-            <p>The organiser of this session series will share the feedback link for the whole series with attendees.</p>
-        `
-            : `
-            You can share the direct link: <a href='${appURL}/${id}'>${shortenedAppURL}/${id}</a><br>
-            Or, ask them to go to <a href='${appURL}'>${shortenedAppURL}</a> and enter the session ID.<br>
-            Or, <a href='${appURL}/feedback/instructions/${id}'>show a page with instructions on how to reach the feedback form</a> including a QR code for your attendees to scan.<br>
-            ${
-              data.certificate
-                ? "<br>Don't forget to let your attendees know that they'll be able to download a certificate of attendance after completing feedback."
-                : ""
-            }
-        `
-        }
+    <p>
+      The certificate of attendance option is ${
+        data.certificate ? "enabled" : "disabled"
+      }.<br>
+      The attendance register option is ${
+        data.attendance ? "enabled" : "disabled"
+      }.
+    </p>
+  `;
+
+  return body;
+};
+
+/**
+ * Constructs the body of the email send to an organiser when their organiser status is updated.
+ *
+ * @param {Object} data - The session data, including title, date, organisers, and questions.
+ * @param {object} user - The user who performed the update.
+ * @param {string} recepient - The email recipient.
+ * @returns {string} - The constructed HTML body of the email.
+ */
+const buildMailBodyOrganiserEdit = (data, user, recepient) => {
+  let body = `
+        <p>Hello ${recepient.name},</p>
+        <p>Your organiser status for the feedback request on <a href='${appURL}'>LearnLoop</a> for the session '${data.title}' has been updated by ${user.name}.</p>
+        <p><span style='font-size:2em'>Your session ID is <strong>${data.id}</strong></span></br>
+        Refer to your session creation email for your PIN, or <a href='${appURL}/feedback/resetPIN/${data.id}'>reset your PIN</a>.</p>
     `;
 
-  body += `
-        <p style='font-size:1.5em'>View your feedback</p>
-        <p>Go to <a href='${appURL}/feedback/view/${id}'>${shortenedAppURL}/feedback/view/${id}</a> and enter your PIN to retrieve submitted feedback.<br>
-        ${
-          data.notifications
-            ? "Email notification of feedback submissions is <strong>enabled</strong>. "
-            : "Email notification of feedback submissions is <strong>disabled</strong>. "
-        }
-        <a href='${appURL}/feedback/notifications/${id}'>Update your notification preferences</a>.<br>
-        ${
-          !isSubsession && data.attendance
-            ? `The attendance register is <strong>enabled</strong>. <a href='${appURL}/feedback/attendance/${id}'>View attendance register</a>.<br>`
-            : ""
-        }
+  body += recepient.canEdit
+    ? `<p>You have editing rights for this session. <a href='${appURL}/feedback/edit/${data.id}'>Edit your session</a>. This option is only available <strong>before</strong> feedback has been submitted.</p>`
+    : "<p>You have viewing rights for this session.</p>";
+
+  return body;
+};
+
+/**
+ * Constructs the body of the email send to an organiser when their organiser status is removed.
+ *
+ * @param {Object} data - The session data, including title, date, organisers, and questions.
+ * @param {object} user - The user who performed the update.
+ * @param {string} recepient - The email recipient.
+ * @returns {string} - The constructed HTML body of the email.
+ */
+const buildMailBodyOrganiserRemove = (data, user, recepient) => {
+  let body = `
+        <p>Hello ${recepient.name},</p>
+        <p>Your organiser status for the feedback request on <a href='${appURL}'>LearnLoop</a> for the session '${data.title}' has been removed by ${user.name}. Please contact them if you believe this was done in error.</p>
+    `;
+
+  return body;
+};
+
+/**
+ * Constructs the body of the email send to a facilitator when their subsession is updated.
+ *
+ * @param {Object} data - The subsession data.
+ * @param {object} user - The user who performed the update.
+ * @param {string} recepient - The email recipient.
+ * @param {Object} seriesData - The parent session data.
+ * @returns {string} - The constructed HTML body of the email.
+ */
+const buildMailBodySubsessionEdit = (data, user, recepient, seriesData) => {
+  let body = `
+        <p>Hello ${recepient.name},</p>
+        <p>Your feedback request on <a href='${appURL}'>LearnLoop</a> for the session '${data.title}' (part of the session series '${seriesData.title}') has been updated by ${user.name}.</p>
+        <p><span style='font-size:2em'>Your session ID is <strong>${data.id}</strong></span></br>
+        Refer to your session creation email for your PIN, or <a href='${appURL}/feedback/resetPIN/${data.id}'>reset your PIN</a>.</p>
+    `;
+
+  return body;
+};
+
+/**
+ * Constructs the body of the email send to a faciliator when their subsession is closed and removed from a series.
+ *
+ * @param {Object} data - The subsession data, including title, date, organisers, and questions.
+ * @param {object} user - The user who performed the update.
+ * @param {string} recepient - The email recipient.
+ * @param {Object} seriesData - The parent session data.
+ * @returns {string} - The constructed HTML body of the email.
+ */
+const buildMailBodySubsessionRemove = (data, user, recepient, seriesData) => {
+  let body = `
+        <p>Hello ${recepient.name},</p>
+        <p>Your feedback request on <a href='${appURL}'>LearnLoop</a> for the session '${data.title}' has been removed from the session series '${seriesData.title}' by ${user.name}. Please contact them if you believe this was done in error.</p>
     `;
 
   return body;

@@ -1,4 +1,13 @@
 const config = require("../../../config.json");
+const {
+  createUniqueId,
+  createPin,
+  createSalt,
+  hashPin,
+  buildMailHTML,
+  sendMail,
+  formatDateUK,
+} = require("../../utilities/index");
 
 /**
  * Inserts a session into the database and sends notification emails to organisers.
@@ -15,14 +24,6 @@ const insertSession = async (
   isSubsession = false,
   seriesData = {}
 ) => {
-  // Import utilities for generating IDs, PINs, and hashes
-  const {
-    createUniqueId,
-    createPin,
-    createSalt,
-    hashPin,
-  } = require("../../utilities/index");
-
   // Generate a unique session ID
   const id = await createUniqueId(link, "feedback");
   let leadPin; // Variable to store the lead organiser's PIN
@@ -101,7 +102,7 @@ const insertSession = async (
 
   // Send emails to all organisers
   for (let mail of mails) {
-    emailOrganiser(
+    emailOrganiserInsert(
       data,
       id,
       mail.pin,
@@ -132,7 +133,7 @@ const insertSession = async (
  * @param {object} [seriesData={}] - Data from the parent series, if this is a subsession.
  * @returns {Promise<boolean>} - Returns `true` if the email was sent successfully, `false` otherwise.
  */
-const emailOrganiser = (
+const emailOrganiserInsert = (
   data,
   id,
   pin,
@@ -169,8 +170,7 @@ const emailOrganiser = (
   let heading = `Feedback request created`;
   let subject = `${heading}: ${data.title}`;
 
-  // Import utility function to build HTML structure for the email
-  const { buildMailHTML } = require("../../utilities/index");
+  // Build HTML structure for the email
   const html = buildMailHTML(
     subject,
     heading,
@@ -180,8 +180,7 @@ const emailOrganiser = (
     shortenedAppURL
   );
 
-  //import the sendMail utility then dispatch the email
-  const { sendMail } = require("../../utilities/index");
+  //dispatch the email
   sendMail(email, subject, html);
 };
 
@@ -257,7 +256,6 @@ const buildMailBody = (
   isSubsession,
   seriesData
 ) => {
-  const { formatDateUK } = require("../../utilities/index");
   let multipleDates = isSubsession
     ? seriesData.multipleDates
     : data.multipleDates;
@@ -349,9 +347,10 @@ const buildMailBody = (
             ? `The attendance register is <strong>enabled</strong>. <a href='${appURL}/feedback/attendance/${id}'>View attendance register</a>.<br>`
             : ""
         }
+        <br><br>
     `;
 
   return body;
 };
 
-module.exports = { insertSession };
+module.exports = { insertSession, emailOrganiserInsert };
