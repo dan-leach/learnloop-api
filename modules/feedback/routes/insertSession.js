@@ -1,22 +1,53 @@
+/**
+ * @module insertSession
+ * @memberof module:feedback
+ * @summary Handles the creation of new feedback sessions and notifications.
+ *
+ * @description
+ * The `insertSession` module provides functionality for creating new feedback sessions,
+ * including inserting session details into the database and notifying organisers via email.
+ * It generates unique session IDs and secure PINs for each organiser while allowing for
+ * the management of subsessions. The module ensures that all relevant session data is
+ * accurately stored, and notifications are sent promptly to ensure organisers are kept informed
+ * about their sessions. The module also includes mechanisms for managing permissions and
+ * providing relevant links for attendees and organisers alike.
+ *
+ * @requires ../../../config.json - Configuration settings for the application.
+ * @requires ../../utilities/idUtilities - Utility functions for ID generation.
+ * @requires ../../utilities/pinUtilities - Utility functions for PIN generation and hashing.
+ * @requires ../../utilities/mailUtilities - Utilities for sending email notifications.
+ * @requires ../../utilities/dateUtilities - Utilities for formatting date objects.
+ *
+ * @exports insertSession - Function for inserting a new session into the database and notifying organisers.
+ * @exports emailOrganiserInsert - Function to send email notifications to organisers regarding created feedback sessions.
+ */
+
 const config = require("../../../config.json");
-const {
-  createUniqueId,
-  createPin,
-  createSalt,
-  hashPin,
-  buildMailHTML,
-  sendMail,
-  formatDateUK,
-} = require("../../utilities/index");
+const idUtilities = require("../../utilities/idUtilities");
+const pinUtilities = require("../../utilities/pinUtilities");
+const mailUtilities = require("../../utilities/mailUtilities");
+const dateUtilities = require("../../utilities/dateUtilities");
 
 /**
- * Inserts a session into the database and sends notification emails to organisers.
+ * @async
+ * @function insertSession
+ * @memberof module:insertSession
+ * @summary Inserts a session into the database and sends notification emails to organisers.
  *
- * @param {object} link - Database connection or context to be used for database queries.
+ * @description When a new session is created, it generates a unique session ID and, for each organiser,
+ * creates a secure PIN along with a hashed version of it. If the session is not a subsession, the function
+ * also collects and stores email information for all organisers. If it is a subsession, it inherits certain
+ * properties from the parent series and generates a new organiser entry specifically for the subsession.
+ * After preparing the session data and any associated email notifications, the function inserts the
+ * session into the database and sends notification emails to all organisers. The function ensures that
+ * the lead organiser's PIN is returned to the caller for display on in the created view.
+ *
+ * @param {object} link - Database connection for database queries.
  * @param {object} data - The session data, including details about the session and organisers.
  * @param {boolean} [isSubsession=false] - Flag indicating whether the session is a subsession of a series.
  * @param {object} [seriesData={}] - Data from the parent series, if this is a subsession.
  * @returns {Promise<object>} - The ID of the session and the lead organiser's PIN.
+ * @throws {Error} - Throws an error if the database connection fails or if the session insertion fails.
  */
 const insertSession = async (
   link,
@@ -25,24 +56,24 @@ const insertSession = async (
   seriesData = {}
 ) => {
   // Generate a unique session ID
-  const id = await createUniqueId(link, "feedback");
+  const id = await idUtilities.createUniqueId(link, "feedback");
   let leadPin; // Variable to store the lead organiser's PIN
   const mails = []; // Array to store email details for organisers
+  const subsessionIds = []; // Array to hold IDs of subsessions
 
-  let subsessionIds = []; // Array to hold IDs of subsessions
   if (!isSubsession) {
     // Generate PIN, salt, and hashed PIN for each organiser
-    for (let organiser of data.organisers) {
-      const pin = createPin();
+    for (const organiser of data.organisers) {
+      const pin = pinUtilities.createPin();
       if (organiser.isLead) {
         leadPin = pin; // Store the lead organiser's PIN to be returned to the client
-        data.leadName = organiser.name; // Store lead organiser's name to be used in emails
+        data.leadName = organiser.name; // Store lead organiser's name for email notifications
       }
-      const salt = createSalt();
-      organiser.pinHash = hashPin(pin, salt);
-      organiser.salt = salt;
-      organiser.lastSent = null;
-      organiser.notifications = true;
+      const salt = pinUtilities.createSalt();
+      organiser.pinHash = pinUtilities.hashPin(pin, salt); // Hash the PIN
+      organiser.salt = salt; // Store the salt for future verification
+      organiser.lastSent = null; // Initial value for last sent notification
+      organiser.notifications = true; // Enable notifications
 
       // Prepare email data for the organiser
       mails.push({
@@ -55,7 +86,7 @@ const insertSession = async (
     }
 
     // Insert subsessions and collect their IDs to be added to the parent session database row
-    for (let subsession of data.subsessions) {
+    for (const subsession of data.subsessions) {
       const { id } = await insertSession(link, subsession, true, data);
       subsessionIds.push(id);
     }
@@ -63,34 +94,35 @@ const insertSession = async (
 
   if (isSubsession) {
     // If this is a subsession, inherit data from the parent series
-    data.date = "0000-00-00";
-    data.multipleDates = false;
-    data.questions = []; // Subsessions do not have custom questions
-    data.certificate = false; // Subsessions do not directly provide certificates
-    data.attendance = false; // Subsessions do not directly log attendance
-
-    // Generate organiser data for the subsession
-    const pin = createPin();
-    const salt = createSalt();
-    data.organisers = [
-      {
-        name: data.name,
-        email: data.email,
-        isLead: false,
-        canEdit: false,
-        pinHash: hashPin(pin, salt),
-        salt: salt,
-        notifications: true,
-        lastSent: null,
-      },
-    ];
+    Object.assign(data, {
+      date: "0000-00-00",
+      multipleDates: false,
+      questions: [], // Subsessions do not have custom questions
+      certificate: false, // Subsessions do not directly provide certificates
+      attendance: false, // Subsessions do not directly log attendance
+      organisers: [
+        {
+          name: data.name,
+          email: data.email,
+          isLead: false,
+          canEdit: false,
+          pinHash: pinUtilities.hashPin(
+            pinUtilities.createPin(),
+            pinUtilities.createSalt()
+          ),
+          salt: pinUtilities.createSalt(),
+          notifications: true,
+          lastSent: null,
+        },
+      ],
+    });
 
     // Prepare email data if the subsession organiser has an email
     if (data.email) {
       mails.push({
         name: data.name,
         email: data.email,
-        pin: pin,
+        pin: pinUtilities.createPin(), // Generate a new PIN for the subsession
         isLead: data.organisers[0].isLead,
         canEdit: data.organisers[0].canEdit,
       });
@@ -101,8 +133,9 @@ const insertSession = async (
   await insertSessionIntoDatabase(link, id, data, subsessionIds, isSubsession);
 
   // Send emails to all organisers
-  for (let mail of mails) {
-    emailOrganiserInsert(
+  for (const mail of mails) {
+    await emailOrganiserInsert(
+      // Ensure emails are sent sequentially
       data,
       id,
       mail.pin,
@@ -120,18 +153,25 @@ const insertSession = async (
 };
 
 /**
- * Sends an email to an organiser with details about the session and their PIN.
+ * @function emailOrganiserInsert
+ * @memberof module:insertSession
+ * @summary Sends an email notification to an organiser regarding a created feedback session.
  *
- * @param {object} data - The session data, including title, organisers, and other relevant information.
- * @param {string} id - The unique ID of the session.
- * @param {string} pin - The PIN for the organiser to access the session.
- * @param {string} name - The name of the organiser.
- * @param {string} email - The email address of the organiser.
- * @param {boolean} isLead - Whether the organiser is the lead organiser of the session.
- * @param {boolean} canEdit - Whether the organiser has editing privileges.
- * @param {boolean} [isSubsession=false] - Flag indicating whether the email is for a subsession of a series.
- * @param {object} [seriesData={}] - Data from the parent series, if this is a subsession.
- * @returns {Promise<boolean>} - Returns `true` if the email was sent successfully, `false` otherwise.
+ * @description This function constructs and dispatches an email containing the details of the feedback request
+ * created for the organiser. It uses a variety of inputs to customize the email content, including the session
+ * ID, the lead organiser's name, and specific session data. The function also handles subsessions by
+ * appropriately referencing the lead organiser from the parent session.
+ *
+ * @param {object} data - The session data, including details such as title and lead organiser.
+ * @param {string} id - The unique identifier of the feedback session being created.
+ * @param {string} pin - The secure PIN associated with the organiser for the session.
+ * @param {string} name - The name of the organiser receiving the email notification.
+ * @param {string} email - The email address of the organiser to whom the notification will be sent.
+ * @param {boolean} isLead - Indicates whether the organiser is the lead for this session.
+ * @param {boolean} canEdit - Indicates whether the organiser has editing privileges for the session.
+ * @param {boolean} [isSubsession=false] - Flag indicating whether the session is a subsession.
+ * @param {object} [seriesData={}] - Additional data from the parent series if this is a subsession.
+ * @throws {Error} - Throws an error if the email dispatch fails or if there are issues with email content generation.
  */
 const emailOrganiserInsert = (
   data,
@@ -144,14 +184,14 @@ const emailOrganiserInsert = (
   isSubsession = false,
   seriesData = {}
 ) => {
-  // Determine the lead organiser's name (in subsession use the parent sessions lead)
+  // Determine the lead organiser's name; for subsessions, use the parent session's lead
   const leadName = isSubsession ? seriesData.leadName : data.leadName;
 
-  // Define application URLs
-  const appURL = config.client.url;
-  const shortenedAppURL = appURL.replace("https://", ""); // Create a shortened version of the URL to look better on emails
+  // Define application URLs for email content
+  const appURL = config.client.url; // Base application URL
+  const shortenedAppURL = appURL.replace("https://", ""); // Shortened version for a cleaner email
 
-  // Build the body of the email
+  // Build the body of the email using provided data
   const body = buildMailBody(
     id,
     pin,
@@ -166,12 +206,12 @@ const emailOrganiserInsert = (
     seriesData
   );
 
-  // Email heading and subject
-  let heading = `Feedback request created`;
-  let subject = `${heading}: ${data.title}`;
+  // Email heading and subject line
+  const heading = `Feedback request created`; // Static heading for the email
+  const subject = `${heading}: ${data.title}`; // Dynamic subject line based on session title
 
-  // Build HTML structure for the email
-  const html = buildMailHTML(
+  // Build HTML structure for the email notification
+  const html = mailUtilities.buildMailHTML(
     subject,
     heading,
     body,
@@ -180,20 +220,27 @@ const emailOrganiserInsert = (
     shortenedAppURL
   );
 
-  //dispatch the email
-  sendMail(email, subject, html);
+  // Dispatch the email to the organiser
+  mailUtilities.sendMail(email, subject, html); // Send the email using the specified parameters
 };
 
 /**
- * Inserts a session and its associated subsessions into the database.
+ * @async
+ * @function insertSessionIntoDatabase
+ * @memberof module:insertSession
+ * @summary Inserts a feedback session (and its subsessions, if applicable) into the database.
  *
- * @param {Object} link - The database connection object used to execute queries.
- * @param {string} id - The unique identifier for the session.
- * @param {Object} data - The session data containing details such as name, title, date, and organisers.
- * @param {Array<string>} subsessionIds - An array of unique identifiers for any subsessions associated with this session.
- * @param {boolean} isSubsession - A flag indicating whether this is a subsession.
- * @returns {Promise<boolean>} - Returns a promise that resolves to `true` if the session was successfully inserted, or throws an error if the insertion fails.
- * @throws {Error} - Throws an error if the database connection fails or if the session insertion fails.
+ * @description Performs an SQL insert operation into the specified feedback sessions table.
+ * It verifies that a valid database connection is provided before attempting the insertion.
+ * The function constructs an SQL query with the session details and executes it using the provided database connection.
+ *
+ * @param {object} link - The database connection object for executing queries.
+ * @param {string} id - The unique identifier for the session being inserted.
+ * @param {object} data - The session data containing various properties to be inserted.
+ * @param {Array<string>} subsessionIds - An array of IDs for any associated subsessions.
+ * @param {boolean} isSubsession - Flag indicating whether the session is a subsession.
+ * @returns {Promise<boolean>} - Returns true if the insertion is successful.
+ * @throws {Error} - Throws an error if the database connection is invalid or if the insertion fails.
  */
 const insertSessionIntoDatabase = async (
   link,
@@ -202,46 +249,59 @@ const insertSessionIntoDatabase = async (
   subsessionIds,
   isSubsession
 ) => {
-  // Insert the session and subsessions into the database
+  // Ensure a valid database connection is provided
   if (!link) {
-    throw new Error("Database connection failed.");
+    throw new Error("Database connection failed."); // Error if connection is not valid
   }
+
   try {
-    const query = `INSERT INTO ${config.feedback.tables.tblSessions} (id, name, title, date, multipleDates, organisers, questions, certificate, subsessions, isSubsession, attendance) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    // Construct SQL query for inserting session data
+    const query = `INSERT INTO ${config.feedback.tables.tblSessions} 
+      (id, name, title, date, multipleDates, organisers, questions, certificate, subsessions, isSubsession, attendance) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+
+    // Execute the insert query with session data
     await link.execute(query, [
       id,
-      data.name,
-      data.title,
-      data.multipleDates || isSubsession ? "0000-00-00" : data.date, //default value in case of multipleDates
-      data.multipleDates,
-      data.organisers,
-      data.questions,
-      data.certificate,
-      subsessionIds,
-      isSubsession,
-      data.attendance,
+      data.name, // Session name
+      data.title, // Session title
+      data.multipleDates || isSubsession ? "0000-00-00" : data.date, // Default date for multiple dates or subsessions
+      data.multipleDates, // Flag indicating if there are multiple dates
+      data.organisers, // Organiser details
+      data.questions, // Questions associated with the session
+      data.certificate, // Certificate flag
+      subsessionIds, // IDs of any subsessions
+      isSubsession, // Flag indicating if this is a subsession
+      data.attendance, // Attendance tracking flag
     ]);
-    return true;
+
+    return true; // Return true on successful insertion
   } catch (error) {
-    throw error;
+    throw error; // Rethrow the error for handling at a higher level
   }
 };
 
 /**
- * Constructs the body of the feedback request email.
+ * @function buildMailBody
+ * @memberof module:insertSession
+ * @summary Builds the HTML body for the email notification regarding a feedback session.
+ *
+ * @description This function generates a detailed HTML email body that provides recipients
+ * with information about the created feedback session. It includes session details,
+ * access rights, and instructions for directing attendees to the feedback form.
  *
  * @param {string} id - The unique identifier for the session.
- * @param {string} pin - The PIN associated with the session.
- * @param {string} name - The name of the email recipient.
- * @param {boolean} isLead - Indicates if the recipient is the lead organiser for the session.
+ * @param {string} pin - The session PIN for the lead organiser.
+ * @param {string} name - The name of the recipient (organiser).
+ * @param {boolean} isLead - Indicates if the recipient is the lead organiser.
  * @param {boolean} canEdit - Indicates if the recipient has editing rights for the session.
- * @param {string} leadName - The name of the lead organiser (if the recipient is not the lead).
- * @param {string} appURL - The base URL of the application for generating links.
- * @param {string} shortenedAppURL - The shortened version of the application URL.
- * @param {Object} data - The session data, including title, date, organisers, and questions.
- * @param {boolean} isSubsession - Indicates if the session is a subsession.
- * @param {Object} seriesData - Data related to the parent series, if applicable.
- * @returns {string} - The constructed HTML body of the email.
+ * @param {string} leadName - The name of the lead organiser (if not the recipient).
+ * @param {string} appURL - The full application URL.
+ * @param {string} shortenedAppURL - A shortened version of the application URL.
+ * @param {object} data - The session data containing various properties.
+ * @param {boolean} isSubsession - Indicates if this email is for a subsession.
+ * @param {object} seriesData - Data from the parent session series, if applicable.
+ * @returns {string} - The constructed HTML body for the email.
  */
 const buildMailBody = (
   id,
@@ -256,12 +316,20 @@ const buildMailBody = (
   isSubsession,
   seriesData
 ) => {
+  // Determine if the session has multiple dates
   let multipleDates = isSubsession
     ? seriesData.multipleDates
     : data.multipleDates;
+
+  // Format the date for the email
   let date;
-  if (!multipleDates)
-    date = formatDateUK(isSubsession ? seriesData.date : data.date);
+  if (!multipleDates) {
+    date = dateUtilities.formatDateUK(
+      isSubsession ? seriesData.date : data.date
+    );
+  }
+
+  // Start building the email body
   let body = `
         <p>Hello ${name},<br><br>
         A feedback request has been successfully created${
@@ -270,20 +338,21 @@ const buildMailBody = (
     data.title
   }' delivered on ${multipleDates ? "multiple dates" : date}. `;
 
+  // Additional information based on whether this is a subsession
   if (isSubsession) {
     body += `This session is part of the series '${seriesData.title}'. `;
   } else {
+    // Include details specific to the lead organiser
     if (isLead) {
-      body += `You are the lead organsier for this event. This means your access to the session cannot be removed and you have editing rights. `;
+      body += `You are the lead organiser for this event. Your access to the session cannot be removed, and you have editing rights. `;
     } else {
-      if (canEdit) {
-        body += `You have been given editing rights for this session. `;
-      } else {
-        body += `You have been given viewing rights for this session. `;
-      }
+      body += canEdit
+        ? `You have been given editing rights for this session. `
+        : `You have been given viewing rights for this session. `;
     }
   }
 
+  // Include session ID and PIN details
   body += `</p><p>Please keep this email for future reference.</p>
         <span style='font-size:2em'>Your session ID is <strong>${id}</strong><br>
         Your session PIN is <strong>${pin}</strong></span><br>
@@ -291,21 +360,20 @@ const buildMailBody = (
         <a href='${appURL}/feedback/resetPIN/${id}'>Reset your PIN</a>.<br>
     `;
 
-  // Use join to cleanly concatenate array elements
+  // Add information about subsessions if applicable
   if (data.subsessions && data.subsessions.length) {
-    if (data.subsessions.length === 1) {
-      body += `Feedback will be collected on the session ${data.subsessions[0].title}.<br>`;
-    } else {
-      body += `Feedback will be collected on the sessions: <ul>${data.subsessions
-        .map(
-          (subsession) =>
-            `<li>'${subsession.title}' faciliated by ${subsession.name}</li>`
-        )
-        .join("")}</ul>`;
-    }
+    body +=
+      data.subsessions.length === 1
+        ? `Feedback will be collected on the session ${data.subsessions[0].title}.<br>`
+        : `Feedback will be collected on the sessions: <ul>${data.subsessions
+            .map(
+              (subsession) =>
+                `<li>'${subsession.title}' facilitated by ${subsession.name}</li>`
+            )
+            .join("")}</ul>`;
   }
 
-  // Simplify additional questions section
+  // Include additional questions if any
   if (data.questions && data.questions.length) {
     body += `The following additional questions will be asked:<ul>
             ${data.questions
@@ -314,10 +382,12 @@ const buildMailBody = (
             </ul>`;
   }
 
+  // Provide edit link if the recipient has editing rights
   if (canEdit) {
     body += `<a href='${appURL}/feedback/edit/${id}'>Edit your session</a>. This option is only available <strong>before</strong> feedback has been submitted.`;
   }
 
+  // Provide instructions for directing attendees to the feedback form
   body += `
         <p style='font-size:1.5em'>How to direct attendees to the feedback form</p>
         ${
@@ -335,9 +405,9 @@ const buildMailBody = (
                 : ""
             }
         `
-        }
-    `;
+        }`;
 
+  // Provide a link to view feedback submissions
   body += `
         <p style='font-size:1.5em'>View your feedback</p>
         <p>Go to <a href='${appURL}/feedback/view/${id}'>${shortenedAppURL}/feedback/view/${id}</a> and enter your PIN to retrieve submitted feedback.<br>
@@ -350,7 +420,7 @@ const buildMailBody = (
         <br><br>
     `;
 
-  return body;
+  return body; // Return the constructed email body
 };
 
 module.exports = { insertSession, emailOrganiserInsert };

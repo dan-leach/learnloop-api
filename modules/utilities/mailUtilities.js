@@ -1,150 +1,27 @@
-const crypto = require("crypto");
+/**
+ * @module mailUtilities
+ * @memberof module:LearnLoopAPI
+ * @summary This module provides utilities for creating and sending emails.
+ *
+ * @description
+ * The `mailUtilities` module offers functionalities for generating and sending
+ * emails in the LearnLoop API. It includes methods for constructing email HTML
+ * templates, formatting dates in various formats, and sending emails through
+ * Nodemailer. The module also manages the inclusion of notices for development
+ * mode and invitations for using LearnLoop, ensuring that all emails sent are
+ * informative and well-structured.
+ *
+ * @requires nodemailer - A module for sending emails easily with Node.js.
+ * @requires ../../config.json - Configuration file that contains application settings
+ * including development mode flags and email credentials.
+ *
+ * @exports buildMailHTML - Constructs the complete HTML structure for an email.
+ * @exports sendMail - Sends an email using the configured Nodemailer transporter.
+ * @exports formatDateUK - Formats a date as 'dd/mm/yyyy'.
+ * @exports formatDateISO - Formats a date as 'YYYY-MM-DD'.
+ */
+
 const config = require("../../config.json");
-
-/**
- * Creates a unique short id and checks it is unique.
- * async
- * @param {Object} link - Database link or connection object.
- * @param {string} module - The name of the module in use (e.g. feedback)
- * @returns {Promise<string>} A unique short Id.
- */
-const createUniqueId = async (link, module) => {
-  let id;
-  let isUnique;
-  let count = 0;
-
-  //get the name of the sessions table according to module
-  const tblName = config[module].tables.tblSessions;
-
-  do {
-    id = buildId(module.charAt(0)); //prefix is first letter of module name (e.g. f for feedback)
-    isUnique = await idIsUnique(link, tblName, id);
-    count++;
-    if (count > 100)
-      throw new Error(
-        "Unable to create unique feedback session ID after 100 attempts."
-      );
-  } while (!isUnique);
-
-  return id;
-};
-
-/**
- * Builds a unique id based on the module type.
- *
- * @param {string} prefix - The prefix character to denonte the module.
- * @returns {string} The generated unique id starting with the prefix character followed by 5 random characters.
- */
-const buildId = (prefix) => {
-  const permittedChars = "23456789abcdeghjkmnpqrstuvwxyzABCDEGHJKMNPQRSTUVWXYZ";
-  let id = prefix;
-
-  for (let i = 0; i < 5; i++) {
-    id += permittedChars[Math.floor(Math.random() * permittedChars.length)];
-  }
-  return id;
-};
-
-/**
- * Check if a session id exists in the sessions table.
- * async
- * @param {mysql.Connection} link - The database connection.
- * @param {string} tblName - The name of the table to check the Id uniqueness against
- * @param {string} id - The session ID to check.
- * @returns {Promise<boolean>} - Returns false if the session ID exists, true if not.
- */
-const idIsUnique = async (link, tblName, id) => {
-  if (!link) {
-    throw new Error("Database connection failed.");
-  }
-
-  try {
-    const query = `SELECT COUNT(*) as count FROM ${tblName} WHERE id = ?`;
-    const result = await link.execute(query, [id]);
-    const count = result[0][0].count;
-    return count === 0;
-  } catch (error) {
-    throw new Error("dbIDIsUnique database query failed: " + error.message);
-  }
-};
-
-/**
- * Generates a random 6-digit PIN.
- *
- * @returns {string} A randomly generated 6-digit PIN.
- */
-const createPin = () => {
-  const permittedChars = "0123456789";
-  let pin = "";
-  for (let i = 0; i < 6; i++) {
-    pin += permittedChars[Math.floor(Math.random() * permittedChars.length)];
-  }
-  return pin;
-};
-
-/**
- * Generates a random salt.
- *
- * @param {number} [length=16] - The length of the salt to generate (default is 16 bytes).
- * @returns {string} A randomly generated salt in hexadecimal format.
- */
-const createSalt = (length = 16) => {
-  return crypto.randomBytes(length).toString("hex"); // Generates a salt of specified length
-};
-
-/**
- * Hashes a PIN using SHA-256 with the provided salt.
- *
- * @param {string} pin - The PIN to hash.
- * @param {string} salt - The salt to use in the hashing process.
- * @returns {string} The resulting SHA-256 hash of the PIN and salt.
- */
-const hashPin = (pin, salt) => {
-  return crypto
-    .createHash("sha256")
-    .update(pin + salt)
-    .digest("hex");
-};
-
-/**
- * Retrieves the pinHash and salt from the database for a given ID.
- *
- * @param {string} id - The session id.
- * @param {string} module - The module of the session.
- * @param {Object} link - The database connection object used to execute queries.
- * @returns {Promise<{ pinHash: string, salt: string }>} - An object containing pinHash and salt.
- */
-async function getOrganisers(id, module, link) {
-  const tbl = config[module].tables.tblSessions;
-  try {
-    const [rows] = await link.execute(
-      `SELECT organisers FROM ${tbl} WHERE id = ?`,
-      [id]
-    );
-
-    if (rows.length > 0) {
-      return JSON.parse(rows[0].organisers);
-    } else {
-      throw new Error("Session not found");
-    }
-  } catch (error) {
-    throw error; // Rethrow the error for handling in the calling function
-  }
-}
-
-/**
- * Checks if a PIN matches the given PIN hash.
- *
- * @param {string} pin - The PIN to check.
- * @param {string} salt - The stored salt.
- * @param {string} pinHash - The stored hash of the PIN.
- * @returns {boolean} True if the PIN matches the hash; otherwise, false.
- */
-const pinIsValid = (pin, salt, pinHash) => {
-  const hash = hashPin(pin, salt);
-  if (process.env.adminPinHash === hash) return true;
-  return pinHash === hash;
-};
 
 /**
  * Generates the footer content for an email, optionally including a development mode notice and an invitation to use LearnLoop.
@@ -173,7 +50,7 @@ const addMailFooter = (includeInvite, appURL, shortenedAppURL) => {
       </p>`;
   }
 
-  return footer;
+  return footer; // Return the complete footer HTML
 };
 
 /**
@@ -185,8 +62,8 @@ const addMailFooter = (includeInvite, appURL, shortenedAppURL) => {
  * @param {boolean} isLead - Determines whether the recipient is a lead, influencing the footer content.
  * @param {string} appURL - The full URL of the application, used for links in the email.
  * @param {string} shortenedAppURL - A shortened version of the app URL, used in the footer invitation link.
+ * @returns {string} - The complete HTML structure for the email.
  */
-
 const buildMailHTML = (
   subject,
   heading,
@@ -343,7 +220,7 @@ const sendMail = (email, subject, html) => {
       return true; // Return success status
     })
     .catch((error) => {
-      throw error;
+      console.error("Error sending email:", error); // Log the error
       return false; // Return failure status
     });
 };
@@ -359,7 +236,7 @@ function formatDateUK(date) {
   const month = String(date.getMonth() + 1).padStart(2, "0"); // Months are zero-based
   const year = date.getFullYear();
 
-  return `${day}/${month}/${year}`;
+  return `${day}/${month}/${year}`; // Return formatted date string
 }
 
 /**
@@ -369,20 +246,14 @@ function formatDateUK(date) {
  * @returns {string} The formatted date string in YYYY-MM-DD format.
  */
 const formatDateISO = (date) => {
-  let year = date.getFullYear();
-  let month = String(date.getMonth() + 1).padStart(2, "0"); // Months are zero-based
-  let day = String(date.getDate()).padStart(2, "0");
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0"); // Months are zero-based
+  const day = String(date.getDate()).padStart(2, "0");
 
-  return `${year}-${month}-${day}`;
+  return `${year}-${month}-${day}`; // Return formatted date string
 };
 
 module.exports = {
-  createUniqueId,
-  createPin,
-  createSalt,
-  hashPin,
-  getOrganisers,
-  pinIsValid,
   buildMailHTML,
   sendMail,
   formatDateUK,

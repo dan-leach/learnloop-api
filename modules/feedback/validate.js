@@ -1,3 +1,22 @@
+/**
+ * @module validate
+ * @memberof module:feedback
+ * @summary Specifies validation rules and checks requests against these for feedback module routes.
+ * @description
+ * This module defines validation rules for various routes related to feedback session management,
+ * specifically for inserting, loading, and updating session data. It utilizes the `express-validator`
+ * library to enforce data integrity and ensure that all required fields meet specified criteria
+ * before being processed by the application.
+ * 
+ * @requires express-validator - Validation library for performing data validation and sanitization
+ * @requires ../../config.json - Used to check question types match expected values
+ * 
+ * @exports insertSessionRules - Ruleset for the insertSession route
+ * @exports loadUpdateSessionRules - Ruleset for the loadUpdateSession route
+ * @exports updateSessionRules - Ruleset for the updateSession route
+ * @exports validateRequest - Function to perform the validation and sanitisation according to a given ruleset
+ */
+
 const { check, body, validationResult } = require("express-validator");
 const config = require("../../config.json");
 
