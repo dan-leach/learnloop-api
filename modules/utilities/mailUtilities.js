@@ -17,14 +17,14 @@
  *
  * @exports buildMailHTML - Constructs the complete HTML structure for an email.
  * @exports sendMail - Sends an email using the configured Nodemailer transporter.
- * @exports formatDateUK - Formats a date as 'dd/mm/yyyy'.
- * @exports formatDateISO - Formats a date as 'YYYY-MM-DD'.
  */
 
 const config = require("../../config.json");
 
 /**
- * Generates the footer content for an email, optionally including a development mode notice and an invitation to use LearnLoop.
+ * @function addMailFooter
+ * @memberof module:mailUtilities
+ * @summary Generates the footer content for an email, optionally including a development mode notice and an invitation to use LearnLoop.
  *
  * @param {boolean} includeInvite - Whether to include an invitation to use LearnLoop.
  * @param {string} appURL - The full URL for LearnLoop.
@@ -54,7 +54,9 @@ const addMailFooter = (includeInvite, appURL, shortenedAppURL) => {
 };
 
 /**
- * Builds the HTML structure for an email, including the header, body, and footer.
+ * @function buildMailHTML
+ * @memberof module:mailUtilities
+ * @summary Builds the HTML structure for an email, including the header, body, and footer.
  *
  * @param {string} subject - The subject of the email, used in the title tag.
  * @param {string} heading - The main heading text displayed in the email body.
@@ -169,14 +171,17 @@ const buildMailHTML = (
 };
 
 /**
- * Sends an email using Nodemailer.
+ * @async
+ * @function sendMail
+ * @memberof module:mailUtilities
+ * @summary Sends an email using Nodemailer.
  *
  * @param {string} email - The recipient's email address.
  * @param {string} subject - The subject line of the email.
  * @param {string} html - The HTML content of the email.
  * @returns {Promise<boolean>} - Returns a promise that resolves to `true` if the email was sent successfully, or `false` if an error occurred.
  */
-const sendMail = (email, subject, html) => {
+const sendMail = async (email, subject, html) => {
   const nodemailer = require("nodemailer");
 
   // Configure the email transporter using Nodemailer
@@ -185,7 +190,7 @@ const sendMail = (email, subject, html) => {
     port: 465,
     secure: true, // true for port 465, false for other ports
     auth: {
-      user: "noreply@learnloop.co.uk",
+      user: config.noreplyemail,
       pass: process.env.emailKey,
     },
     dkim: {
@@ -213,49 +218,16 @@ const sendMail = (email, subject, html) => {
   };
 
   // Send the email using the transporter
-  return transporter
-    .sendMail(mailOptions)
-    .then((info) => {
-      console.log("Email sent: " + info.response); // Log successful email response
-      return true; // Return success status
-    })
-    .catch((error) => {
-      console.error("Error sending email:", error); // Log the error
-      return false; // Return failure status
-    });
-};
-
-/**
- * Formats a Date object as 'dd/mm/yyyy'.
- *
- * @param {Date} date - The date object to format.
- * @returns {string} The formatted date as 'dd/mm/yyyy'.
- */
-function formatDateUK(date) {
-  const day = String(date.getDate()).padStart(2, "0");
-  const month = String(date.getMonth() + 1).padStart(2, "0"); // Months are zero-based
-  const year = date.getFullYear();
-
-  return `${day}/${month}/${year}`; // Return formatted date string
-}
-
-/**
- * Formats a Date object as a string in the format YYYY-MM-DD.
- *
- * @param {Date} date - The Date object to format.
- * @returns {string} The formatted date string in YYYY-MM-DD format.
- */
-const formatDateISO = (date) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0"); // Months are zero-based
-  const day = String(date.getDate()).padStart(2, "0");
-
-  return `${year}-${month}-${day}`; // Return formatted date string
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log("Email sent: " + info.response); // Log successful email response
+    return true;
+  } catch (error) {
+    throw error;
+  }
 };
 
 module.exports = {
   buildMailHTML,
   sendMail,
-  formatDateUK,
-  formatDateISO,
 };

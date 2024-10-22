@@ -28,8 +28,6 @@ app.set("trust proxy", 3);
  * it advises users to visit the main website. The response includes HTML content with a clickable link to the website.
  * This is useful for guiding users who may be accessing the API directly in a browser.
  *
- * @requires ./config.json - To get the primary URL
- *
  * @returns {string} 200 - HTML content that redirects the user to an external website.
  */
 app.get("/", (req, res) => {
@@ -49,9 +47,6 @@ app.get("/", (req, res) => {
  * The QR code is then streamed as a PNG image directly to the client. If the QR code generation fails, a 500 status is returned with an error message.
  *
  * @param {string} req.query.id - The session ID (should be 6 characters long).
- *
- * @requires qrcode - Library for generating QRcodes
- * @requires config - For the primary URL
  *
  * @returns {image/png} 200 - A PNG image of the generated QR code.
  * @returns {string} 400 - Error message if the session ID is invalid.
@@ -79,7 +74,7 @@ app.get("/qrcode", async (req, res) => {
     await QRCode.toFileStream(res, qrUrl);
   } catch (error) {
     // Log the error for debugging purposes and send a 500 status with an error message
-    console.error("Error generating QR code:", error);
+    console.error(new Date().toISOString(), "Error generating QR code:", error);
     res.status(500).send(`Failed to generate QR code: ${error.message}`);
   }
 });
@@ -90,8 +85,6 @@ app.get("/qrcode", async (req, res) => {
  *
  * @description This route sends the contents of the server's config file to the client as a JSON response.
  * The config file contains various settings that the client might need, such as API endpoints or feature flags.
- *
- * @requires ./config.json - The config file to be returned
  *
  * @returns {Object} 200 - JSON object containing the server's configuration.
  */

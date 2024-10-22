@@ -55,10 +55,10 @@ router.post(
       const { insertSession } = require("./routes/insertSession");
 
       // Insert session into the database and get the session ID and lead pin
-      const { id, leadPin } = await insertSession(link, data);
+      const { id, leadPin, sendMailFails } = await insertSession(link, data);
 
       // Respond with the session ID and lead organiser pin
-      res.json({ id, leadPin });
+      res.json({ id, leadPin, sendMailFails });
     } catch (error) {
       // Log the error with a timestamp for debugging
       console.error(new Date().toISOString(), "insertSession error:", error);
@@ -229,10 +229,10 @@ router.post(
       const { updateSession } = require("./routes/updateSession");
 
       // Update the session with the provided data
-      await updateSession(link, data, user);
+      const sendMailFails = await updateSession(link, data, user);
 
       // Respond with a success message
-      res.json("The session was updated.");
+      res.json({ message: "The session was updated.", sendMailFails});
     } catch (error) {
       // Log the error with a timestamp for debugging
       console.error(new Date().toISOString(), "updateSession error:", error);

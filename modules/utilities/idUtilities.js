@@ -20,8 +20,11 @@
 const config = require("../../config.json");
 
 /**
- * Creates a unique short ID and checks its uniqueness in the database.
  * @async
+ * @function createUniqueId
+ * @memberof module:idUtilities
+ * @summary Creates a short ID and checks its uniqueness in the database.
+ *
  * @param {Object} link - Database link or connection object.
  * @param {string} module - The name of the module in use (e.g. feedback).
  * @returns {Promise<string>} A unique short ID.
@@ -48,7 +51,10 @@ const createUniqueId = async (link, module) => {
 };
 
 /**
- * Builds a unique ID based on the module type.
+ * @function buildId
+ * @memberof module:idUtilities
+ * @summary Builds a unique ID based on the module type.
+ *
  * @param {string} prefix - The prefix character to denote the module.
  * @returns {string} The generated unique ID starting with the prefix followed by 5 random characters.
  */
@@ -65,8 +71,11 @@ const buildId = (prefix) => {
 };
 
 /**
- * Checks if a session ID exists in the sessions table.
  * @async
+ * @function idIsUnique
+ * @memberof module:idUtilities
+ * @summary Checks if a session ID exists in the sessions table.
+ *
  * @param {mysql.Connection} link - The database connection.
  * @param {string} tblName - The name of the table to check the ID uniqueness against.
  * @param {string} id - The session ID to check.

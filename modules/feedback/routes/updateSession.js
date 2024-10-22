@@ -57,6 +57,7 @@ const updateSession = async (link, data, user) => {
     organiserRemove: [],
     organiserAdd: [],
   };
+  let sendMailFails = [];
 
   // Array to hold IDs of current subsessions
   const subsessionIds = [];
@@ -107,13 +108,14 @@ const updateSession = async (link, data, user) => {
     } else {
       // New subsession to be added
       data.leadName = user.name;
-      const { id } = await insertSessionRoute.insertSession(
+      const insertOutcome = await insertSessionRoute.insertSession(
         link,
         subsession,
         true,
         data
       );
-      subsessionIds.push(id); // Add new subsession ID
+      sendMailFails.push(...insertOutcome.sendMailFails);
+      subsessionIds.push(insertOutcome.id); // Add new subsession ID
     }
   }
 
@@ -195,20 +197,26 @@ const updateSession = async (link, data, user) => {
 
   // Notify the lead organiser of non-lead updates
   for (let recipient of mails.nonLeadSessionEdit) {
-    emailOrganiserUpdate(
+    const emailOutcome = await emailOrganiserUpdate(
       data,
       user,
       recipient,
       buildMailBodyNonLeadSessionEdit,
       "Feedback request updated"
     );
+    if (!emailOutcome.sendSuccess)
+      sendMailFails.push({
+        name: recipient.name,
+        email: recipient.email,
+        error: emailOutcome.error,
+      });
   }
 
   // Notify newly added organisers
   if (mails.organiserAdd.length) {
     for (let recipient of mails.organiserAdd) {
       data.leadName = leadOrganiser.name; // Ensure lead name is set
-      emailOrganiserInsert(
+      const emailOutcome = await insertSessionRoute.emailOrganiserInsert(
         data,
         data.id,
         recipient.pin,
@@ -217,54 +225,52 @@ const updateSession = async (link, data, user) => {
         false,
         recipient.canEdit
       );
+      if (!emailOutcome.sendSuccess)
+        sendMailFails.push({
+          name: recipient.name,
+          email: recipient.email,
+          error: emailOutcome.error,
+        });
     }
   }
 
   // Notify organisers whose details have changed
   for (let recipient of mails.organiserEdit) {
-    emailOrganiserUpdate(
+    const emailOutcome = await emailOrganiserUpdate(
       data,
       user,
       recipient,
       buildMailBodyOrganiserEdit,
       "Organiser status updated"
     );
+    if (!emailOutcome.sendSuccess)
+      sendMailFails.push({
+        name: recipient.name,
+        email: recipient.email,
+        error: emailOutcome.error,
+      });
   }
 
   // Notify organisers who have been removed
   for (let recipient of mails.organiserRemove) {
-    emailOrganiserUpdate(
+    const emailOutcome = await emailOrganiserUpdate(
       data,
       user,
       recipient,
       buildMailBodyOrganiserRemove,
       "Organiser status update"
     );
-  }
-
-  // Handle notifications for new subsessions via the insertSession route
-  for (let recipient of mails.subsessionAdd) {
-    insertSessionRoute.emailOrganiserInsert(
-      {
-        title: recipient.subsession.title,
-      },
-      recipient.subsession.id, // Subsession ID
-      recipient.pin,
-      recipient.name,
-      recipient.email,
-      false,
-      false,
-      true,
-      {
-        ...data,
-        leadName: leadOrganiser.name,
-      }
-    );
+    if (!emailOutcome.sendSuccess)
+      sendMailFails.push({
+        name: recipient.name,
+        email: recipient.email,
+        error: emailOutcome.error,
+      });
   }
 
   // Notify facilitators of changed subsessions
   for (let recipient of mails.subsessionEdit) {
-    emailOrganiserUpdate(
+    const emailOutcome = await emailOrganiserUpdate(
       recipient,
       user,
       recipient,
@@ -272,12 +278,17 @@ const updateSession = async (link, data, user) => {
       "Feedback request updated",
       data
     );
+    if (!emailOutcome.sendSuccess)
+      sendMailFails.push({
+        name: recipient.name,
+        email: recipient.email,
+        error: emailOutcome.error,
+      });
   }
 
   // Notify facilitators of removed subsessions
   for (let recipient of mails.subsessionRemove) {
-    console.error(recipient); // Log recipient information
-    emailOrganiserUpdate(
+    const emailOutcome = await emailOrganiserUpdate(
       recipient,
       user,
       recipient,
@@ -285,9 +296,15 @@ const updateSession = async (link, data, user) => {
       "Feedback request closed",
       data
     );
+    if (!emailOutcome.sendSuccess)
+      sendMailFails.push({
+        name: recipient.name,
+        email: recipient.email,
+        error: emailOutcome.error,
+      });
   }
 
-  return true; // Indicate successful completion of the update process
+  return sendMailFails; // Indicate successful completion of the update process
 };
 
 /**
@@ -610,6 +627,7 @@ const updateSessionInDatabase = async (link, data, subsessionIds) => {
 };
 
 /**
+ * @async
  * @function emailOrganiserUpdate
  * @memberof module:updateSession
  * @summary Sends an email update to an organiser regarding session changes.
@@ -625,7 +643,7 @@ const updateSessionInDatabase = async (link, data, subsessionIds) => {
  * @param {Object} [seriesData] - Optional additional data related to the session series.
  * @returns {void} - This function does not return a value; it sends an email.
  */
-const emailOrganiserUpdate = (
+const emailOrganiserUpdate = async (
   data,
   user,
   recipient,
@@ -649,8 +667,18 @@ const emailOrganiserUpdate = (
     shortenedAppURL
   );
 
-  // Import the sendMail utility and dispatch the email to the recipient
-  mailUtilities.sendMail(recipient.email, subject, html);
+  // Dispatch the email to the organiser
+  try {
+    await mailUtilities.sendMail(recipient.email, subject, html); // Send the email using the specified parameters
+    return {
+      sendSuccess: true,
+    };
+  } catch (error) {
+    return {
+      sendSuccess: false,
+      error: error.message,
+    };
+  }
 };
 
 /**

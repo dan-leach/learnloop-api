@@ -133,8 +133,9 @@ const insertSession = async (
   await insertSessionIntoDatabase(link, id, data, subsessionIds, isSubsession);
 
   // Send emails to all organisers
+  let sendMailFails = [];
   for (const mail of mails) {
-    await emailOrganiserInsert(
+    const emailOutcome = await emailOrganiserInsert(
       // Ensure emails are sent sequentially
       data,
       id,
@@ -146,13 +147,20 @@ const insertSession = async (
       isSubsession,
       seriesData
     );
+    if (!emailOutcome.sendSuccess)
+      sendMailFails.push({
+        name: mail.name,
+        email: mail.email,
+        error: emailOutcome.error,
+      });
   }
 
   // Return the session ID and the lead organiser's PIN
-  return { id, leadPin };
+  return { id, leadPin, sendMailFails };
 };
 
 /**
+ * @async
  * @function emailOrganiserInsert
  * @memberof module:insertSession
  * @summary Sends an email notification to an organiser regarding a created feedback session.
@@ -173,7 +181,7 @@ const insertSession = async (
  * @param {object} [seriesData={}] - Additional data from the parent series if this is a subsession.
  * @throws {Error} - Throws an error if the email dispatch fails or if there are issues with email content generation.
  */
-const emailOrganiserInsert = (
+const emailOrganiserInsert = async (
   data,
   id,
   pin,
@@ -221,7 +229,17 @@ const emailOrganiserInsert = (
   );
 
   // Dispatch the email to the organiser
-  mailUtilities.sendMail(email, subject, html); // Send the email using the specified parameters
+  try {
+    await mailUtilities.sendMail(email, subject, html); // Send the email using the specified parameters
+    return {
+      sendSuccess: true,
+    };
+  } catch (error) {
+    return {
+      sendSuccess: false,
+      error: error.message,
+    };
+  }
 };
 
 /**

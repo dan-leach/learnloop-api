@@ -22,8 +22,10 @@
 const mysql = require("mysql2/promise");
 
 /**
- * Database configuration for MySQL connection.
  * @const {Object} dbConfig
+ * @memberof module:dbUtilities
+ * @summary Database configuration for MySQL connection.
+ *
  * @property {string} host - The hostname of the database.
  * @property {string} user - The username for the database.
  * @property {string} password - The password for the database.
@@ -37,12 +39,11 @@ const dbConfig = {
 };
 
 /**
- * Opens a connection to the database.
- * This function establishes a connection using the provided configuration object.
- *
  * @async
  * @function openDbConnection
  * @summary Opens a connection to the MySQL database.
+ *
+ * @description This function establishes a MySQL database connection using the provided configuration object.
  *
  * @returns {Promise<Object>} - A promise that resolves to the database connection object.
  * @throws {Error} - Throws an error if the database connection fails.
