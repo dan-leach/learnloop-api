@@ -16,7 +16,10 @@
  * @requires ../../utilities/mailUtilities - For sending notification emails.
  * @requires ../../utilities/dateUtilities - Utilities for formatting date objects into various string representations.
  *
- * @exports loadUpdateSession Core function for the module
+ * @exports updateSession Core function for the module
+ * @exports getOldSessionDetails Used by closeSession route
+ * @exports closeSessionInDatabase Used by closeSession route
+ * @exports emailOrganiserUpdate Used by closeSession route
  */
 
 const config = require("../../../config.json");
@@ -844,4 +847,9 @@ const buildMailBodySubsessionRemove = (data, user, recipient, seriesData) => {
   return body; // Return the constructed email body
 };
 
-module.exports = { updateSession };
+module.exports = {
+  updateSession,
+  getOldSessionDetails,
+  closeSessionInDatabase,
+  emailOrganiserUpdate,
+};

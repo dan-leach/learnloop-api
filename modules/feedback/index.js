@@ -248,4 +248,103 @@ router.post(
   }
 );
 
+/**
+ * @async
+ * @route POST /feedback/closeSession
+ * @memberof module:feedback
+ * @summary Closes a session based on the provided session ID and organiser's PIN.
+ *
+ * @description This route validates the incoming request, checks the provided organiser's PIN for validity,
+ * verifies if the user has editing rights, and then closes the session in the database.
+ * If the request fails at any step, an appropriate error message is returned.
+ *
+ * @requires ./validate - Module for defining validation rules and sanitizing request data.
+ * @requires ../utilities/pinUtilities - Utility functions for validating PINs.
+ * @requires ./routes/closeSession - Contains the logic for closing the session in the database and sending out emails to the organisers.
+ * @requires ./routes/updateSession - Reuses getOldSessionDetails
+ *
+ * @param {object} req.body.data - The data containing the session ID and organiser's PIN.
+ *
+ * @returns {object} 200 - A success message indicating that the session was updated.
+ * @returns {object} 401 - Error message if session has already been closed.
+ * @returns {object} 401 - Error message if the PIN is invalid or the user lacks editing rights.
+ * @returns {object} 500 - Error message if updating the session fails.
+ */
+router.post(
+  "/closeSession",
+  validate.loadUpdateSessionRules, // Middleware for validating update session request data
+  validate.validateRequest, // Middleware for validating the request based on the rules
+  async (req, res) => {
+    let link; // Database connection variable
+    try {
+      // Get the validated and sanitized data from the request
+      const data = matchedData(req);
+
+      // Open a connection to the database
+      link = await openDbConnection(dbConfig);
+
+      // Retrieve session details from the database
+      const updateSessionRoute = require("./routes/updateSession");
+      const sessionDetails = await updateSessionRoute.getOldSessionDetails(
+        data.id,
+        link
+      );
+
+      // Check if the provided PIN is valid for any organiser
+      const { pinIsValid } = require("../utilities/pinUtilities");
+      const user = sessionDetails.organisers.find((organiser) =>
+        pinIsValid(data.pin, organiser.salt, organiser.pinHash)
+      );
+      if (!user) {
+        res.status(401).json({
+          errors: [{ msg: "Invalid PIN." }],
+        });
+        return;
+      }
+
+      // Check if the organiser has editing rights
+      if (!user.canEdit) {
+        res.status(401).json({
+          errors: [{ msg: "User does not have editing rights." }],
+        });
+        return;
+      }
+
+      // Check if the session is a subsession
+      if (sessionDetails.isSubsession) {
+        res.status(400).json({
+          errors: [{ msg: "Subsessions cannot be closed directly." }],
+        });
+        return;
+      }
+
+      // Check if the session is already closed
+      if (sessionDetails.closed) {
+        res.status(400).json({
+          errors: [{ msg: "Session is already closed." }],
+        });
+        return;
+      }
+
+      // Close the session in the database
+      const { closeSession } = require("./routes/closeSession");
+      const sendMailFails = await closeSession(link, sessionDetails, user);
+
+      // Respond with a success message
+      res.json({ message: "The session was closed.", sendMailFails });
+    } catch (error) {
+      // Log the error with a timestamp for debugging
+      console.error(new Date().toISOString(), "closeSession error:", error);
+
+      // Send a 500 response with the error message
+      res.status(500).json({
+        errors: [{ msg: "Failed to close session: " + error.message }],
+      });
+    } finally {
+      // Close the database connection if it was opened
+      if (link) await link.end();
+    }
+  }
+);
+
 module.exports = router;
