@@ -59,6 +59,7 @@ const insertSession = async (
   const id = await idUtilities.createUniqueId(link, "feedback");
   let leadPin; // Variable to store the lead organiser's PIN
   const mails = []; // Array to store email details for organisers
+  let sendMailFails = []; //Array to store details of any failed emails
   const subsessionIds = []; // Array to hold IDs of subsessions
 
   if (!isSubsession) {
@@ -87,8 +88,14 @@ const insertSession = async (
 
     // Insert subsessions and collect their IDs to be added to the parent session database row
     for (const subsession of data.subsessions) {
-      const { id } = await insertSession(link, subsession, true, data);
-      subsessionIds.push(id);
+      const subsessionInsertOutcome = await insertSession(
+        link,
+        subsession,
+        true,
+        data
+      );
+      sendMailFails.push(...subsessionInsertOutcome.sendMailFails);
+      subsessionIds.push(subsessionInsertOutcome.id);
     }
   }
 
@@ -133,7 +140,6 @@ const insertSession = async (
   await insertSessionIntoDatabase(link, id, data, subsessionIds, isSubsession);
 
   // Send emails to all organisers
-  let sendMailFails = [];
   for (const mail of mails) {
     const emailOutcome = await emailOrganiserInsert(
       // Ensure emails are sent sequentially
