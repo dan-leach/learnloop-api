@@ -232,7 +232,7 @@ router.post(
       const sendMailFails = await updateSession(link, data, user);
 
       // Respond with a success message
-      res.json({ message: "The session was updated.", sendMailFails});
+      res.json({ message: "The session was updated.", sendMailFails });
     } catch (error) {
       // Log the error with a timestamp for debugging
       console.error(new Date().toISOString(), "updateSession error:", error);
