@@ -7,13 +7,14 @@
  * specifically for inserting, loading, and updating session data. It utilizes the `express-validator`
  * library to enforce data integrity and ensure that all required fields meet specified criteria
  * before being processed by the application.
- * 
+ *
  * @requires express-validator - Validation library for performing data validation and sanitization
  * @requires ../../config.json - Used to check question types match expected values
- * 
+ *
  * @exports insertSessionRules - Ruleset for the insertSession route
  * @exports loadUpdateSessionRules - Ruleset for the loadUpdateSession route
  * @exports updateSessionRules - Ruleset for the updateSession route
+ * @exports loadGiveFeedback - Ruleset for the loadGiveFeedback route
  * @exports validateRequest - Function to perform the validation and sanitisation according to a given ruleset
  */
 
@@ -220,6 +221,19 @@ const loadUpdateSessionRules = [
  */
 const updateSessionRules = [...insertSessionRules, ...loadUpdateSessionRules];
 
+/**
+ * Validation rules for the loadUpdateSession route.
+ * @type {Array}
+ */
+const loadGiveFeedbackRules = [
+  check("id")
+    .notEmpty()
+    .withMessage("Session ID must be provided.")
+    .isString()
+    .withMessage("Session ID field must be data type [string].")
+    .escape(),
+];
+
 // Middleware function to validate the request
 const validateRequest = (req, res, next) => {
   const errors = validationResult(req);
@@ -233,5 +247,6 @@ module.exports = {
   insertSessionRules,
   loadUpdateSessionRules,
   updateSessionRules,
+  loadGiveFeedbackRules,
   validateRequest,
 };

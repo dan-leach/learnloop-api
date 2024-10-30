@@ -10,7 +10,9 @@
  * utility functions for validating organiser PINs and checking user permissions for editing sessions.
  *
  * @requires express
+ * @requires router
  * @requires express-validator
+ * @requires ./validate Rulesets and validation function for each route
  * @requires ../utilities/dbUtilities Database link configuration and function for opening connection
  *
  * @exports router Object containing the different routes available in the feedback module
@@ -141,6 +143,14 @@ router.post(
 
       // Get the session details based on the provided session ID
       const session = await loadUpdateSession(link, data.id);
+
+      // Check that the session isn't closed
+      if (session.closed) {
+        res.status(403).json({
+          errors: [{ msg: "Session is closed." }],
+        });
+        return;
+      }
 
       // Respond with the session details
       res.json(session);
@@ -339,6 +349,66 @@ router.post(
       // Send a 500 response with the error message
       res.status(500).json({
         errors: [{ msg: "Failed to close session: " + error.message }],
+      });
+    } finally {
+      // Close the database connection if it was opened
+      if (link) await link.end();
+    }
+  }
+);
+
+/**
+ * @async
+ * @route POST /feedback/loadGiveFeedback
+ * @memberof module:feedback
+ * @summary Loads session deails based on the provided session ID.
+ *
+ * @description This route validates the incoming request and then retrieves the session details to populate the feedback form.
+ * If the request fails at any step, an appropriate error message is returned.
+ *
+ * @requires ./validate - Module for defining validation rules and sanitizing request data.
+ * @requires ./routes/loadGiveFeedback - Contains the logic for retreiving the session and any subsession details from the database.
+ *
+ * @param {object} req.body.data - The data containing the session ID.
+ * @returns {object} 200 - The session details if successfully loaded.
+ * @returns {object} 500 - Error message if loading session details fails.
+ */
+router.post(
+  "/loadGiveFeedback",
+  validate.loadGiveFeedbackRules, // Middleware for validating session load request data
+  validate.validateRequest, // Middleware for validating the request based on the rules
+  async (req, res) => {
+    let link; // Database connection variable
+    try {
+      // Get the validated and sanitized data from the request
+      const data = matchedData(req);
+
+      // Open a connection to the database
+      link = await openDbConnection(dbConfig);
+
+      // Import the function to load the session details
+      const { loadGiveFeedback } = require("./routes/loadGiveFeedback");
+
+      // Get the session details based on the provided session ID
+      const session = await loadGiveFeedback(link, data.id);
+
+      // Check that the session isn't closed
+      if (session.closed) {
+        res.status(403).json({
+          errors: [{ msg: "Session is closed." }],
+        });
+        return;
+      }
+
+      // Respond with the session details
+      res.json(session);
+    } catch (error) {
+      // Log the error with a timestamp for debugging
+      console.error(new Date().toISOString(), "loadGiveFeedback error:", error);
+
+      // Send a 500 response with the error message
+      res.status(500).json({
+        errors: [{ msg: "Failed to load session details: " + error.message }],
       });
     } finally {
       // Close the database connection if it was opened

@@ -11,6 +11,8 @@
  * @requires ../../utilities/dateUtilities - Utilities for formatting date objects into various string representations.
  *
  * @exports loadUpdateSession Core function for the module
+ * @exports selectSessionDetails Reused by loadGiveFeedback route
+ * @exports selectSubsessionDetails Reused by loadGiveFeedback route
  */
 
 const config = require("../../../config.json");
@@ -146,4 +148,8 @@ const selectSubsessionDetails = async (link, subsessionIDs) => {
   }
 };
 
-module.exports = { loadUpdateSession };
+module.exports = {
+  loadUpdateSession,
+  selectSessionDetails,
+  selectSubsessionDetails,
+};
