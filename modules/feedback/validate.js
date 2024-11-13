@@ -14,12 +14,14 @@
  * @exports insertSessionRules - Ruleset for the insertSession route
  * @exports loadUpdateSessionRules - Ruleset for the loadUpdateSession route
  * @exports updateSessionRules - Ruleset for the updateSession route
+ * @exports resetPinRules - Ruleset for the resetPin route
  * @exports loadGiveFeedback - Ruleset for the loadGiveFeedback route
  * @exports validateRequest - Function to perform the validation and sanitisation according to a given ruleset
  */
 
 const { check, body, validationResult } = require("express-validator");
 const config = require("../../config.json");
+const { escape } = require("querystring");
 
 /**
  * Validation rules for the insertSession route.
@@ -222,7 +224,24 @@ const loadUpdateSessionRules = [
 const updateSessionRules = [...insertSessionRules, ...loadUpdateSessionRules];
 
 /**
- * Validation rules for the loadUpdateSession route.
+ * Validation rules for the resetPin route
+ * @type {array}
+ */
+const resetPinRules = [
+  check("id")
+    .notEmpty()
+    .withMessage("Session ID must be provided.")
+    .isString()
+    .withMessage("Session ID field must be data type [string].")
+    .escape(),
+
+  check("email")
+    .isEmail()
+    .withMessage("Organiser email field must be a valid email address format."),
+];
+
+/**
+ * Validation rules for the loadGiveFeedbackRules route.
  * @type {Array}
  */
 const loadGiveFeedbackRules = [
@@ -231,6 +250,78 @@ const loadGiveFeedbackRules = [
     .withMessage("Session ID must be provided.")
     .isString()
     .withMessage("Session ID field must be data type [string].")
+    .escape(),
+];
+
+/**
+ * Validation rules for the giveFeedback route.
+ * @type {Array}
+ */
+const giveFeedbackRules = [
+  check("id")
+    .notEmpty()
+    .withMessage("Session ID must be provided.")
+    .isString()
+    .withMessage("Session ID field must be data type [string].")
+    .escape(),
+
+  check("feedback")
+    .optional()
+    .isObject()
+    .withMessage("Feedback field must be data type [object]."),
+
+  check("feedback.positive")
+    .notEmpty()
+    .withMessage("Positive feedback must be provided.")
+    .isString()
+    .withMessage("Positive feedback field must be data type [string].")
+    .escape(),
+
+  check("feedback.negative")
+    .notEmpty()
+    .withMessage("Constructive feedback must be provided.")
+    .isString()
+    .withMessage("Constructive feedback field must be data type [string].")
+    .escape(),
+
+  check("feedback.score")
+    .notEmpty()
+    .withMessage("Score must be provided.")
+    .isInt()
+    .withMessage("Score field must be data type [integer]."),
+
+  check("questions")
+    .optional()
+    .isArray()
+    .withMessage("Questions field must be data type [array]."),
+
+  check("questions.*.response")
+    .optional()
+    .isString()
+    .withMessage("Question response must be data type [string].")
+    .escape(),
+
+  check("subsessions")
+    .optional()
+    .isArray()
+    .withMessage("Subsessions field must be data type [array]."),
+
+  check("subsessions.*.positive")
+    .optional()
+    .isString()
+    .withMessage("Subsession positive feedback must be data type [string].")
+    .escape(),
+
+  check("subsessions.*.negative")
+    .optional()
+    .isString()
+    .withMessage("Subsession constructive feedback must be data type [string].")
+    .escape(),
+
+  check("subsessions.*.score")
+    .optional()
+    .isInt()
+    .withMessage("Subsession score must be data type [integer].")
     .escape(),
 ];
 
@@ -247,6 +338,8 @@ module.exports = {
   insertSessionRules,
   loadUpdateSessionRules,
   updateSessionRules,
+  resetPinRules,
   loadGiveFeedbackRules,
+  giveFeedbackRules,
   validateRequest,
 };

@@ -128,7 +128,7 @@ app.use("/interaction", require("./modules/interaction/index.js"));
  * @returns {Object} 500 - JSON object containing an error message.
  */
 app.use("*", (req, res) => {
-  res.status(500).json({
+  res.status(400).json({
     errors: [{ msg: "Incorrect API route" }],
   });
 });

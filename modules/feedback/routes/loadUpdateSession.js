@@ -123,6 +123,8 @@ const selectSubsessionDetails = async (link, subsessionIDs) => {
     const cleanedSubsessions = subsessions.map((subsession) => {
       // Extract the email from the first organiser (subsession typically has only one organiser)
       const email = subsession.organisers[0].email;
+      const notifications = subsession.organisers[0].notifications;
+      const lastSent = subsession.organisers[0].lastSent;
 
       // Destructure and exclude non-essential fields from the subsession
       const {
@@ -139,7 +141,7 @@ const selectSubsessionDetails = async (link, subsessionIDs) => {
       } = subsession;
 
       // Return a new object containing only essential fields and the organiser's email
-      return { ...rest, email };
+      return { ...rest, email, notifications, lastSent };
     });
 
     return cleanedSubsessions; // Return the array of cleaned subsession objects

@@ -359,6 +359,70 @@ router.post(
 
 /**
  * @async
+ * @route POST /feedback/resetPin
+ * @memberof module:feedback
+ * @summary Resets a session Pin for a given organiser
+ *
+ * @description This route validates the incoming request, checks the email matches an organiser for the given session ID,
+ * then generates a new pin, updates the hash in the database and sends the new pin to the organiser by email.
+ *
+ * @requires ./validate - Module for defining validation rules and sanitizing request data.
+ * @requires ../utilities/pinUtilities - Utility functions for validating PINs.
+ * @requires ./routes/updateSession - Contains the logic for updating the session in the database and sending out emails to the organisers.
+ *
+ * @param {object} req.body.data - The data containing the session ID and organiser email.
+ * @returns {object} 200 - A success message indicating that the pin was reset.
+ * @returns {object} 401 - Error message if the session ID is not found or the email does not match an existing organiser.
+ * @returns {object} 500 - Error message if updating the session fails.
+ */
+router.post(
+  "/resetPin",
+  validate.resetPinRules, // Middleware for validating update session request data
+  validate.validateRequest, // Middleware for validating the request based on the rules
+  async (req, res) => {
+    let link; // Database connection variable
+    try {
+      // Get the validated and sanitized data from the request
+      const data = matchedData(req);
+
+      // Open a connection to the database
+      link = await openDbConnection(dbConfig);
+
+      // Retrieve session details from the database
+      const updateSessionRoute = require("./routes/updateSession");
+      const sessionDetails = await updateSessionRoute.getOldSessionDetails(
+        data.id,
+        link
+      );
+
+      // Import the function to update the session in the database
+      const { resetPin } = require("./routes/resetPin");
+
+      // Update the session with the provided data
+      const sendMailFails = await resetPin(link, data, sessionDetails);
+
+      // Respond with a success message
+      res.json({
+        message: "You pin was reset. Please check your inbox for your new pin.",
+        sendMailFails,
+      });
+    } catch (error) {
+      // Log the error with a timestamp for debugging
+      console.error(new Date().toISOString(), "resetPin error:", error);
+
+      // Send a 500 response with the error message
+      res.status(500).json({
+        errors: [{ msg: "Failed to reset pin: " + error.message }],
+      });
+    } finally {
+      // Close the database connection if it was opened
+      if (link) await link.end();
+    }
+  }
+);
+
+/**
+ * @async
  * @route POST /feedback/loadGiveFeedback
  * @memberof module:feedback
  * @summary Loads session deails based on the provided session ID.
@@ -409,6 +473,70 @@ router.post(
       // Send a 500 response with the error message
       res.status(500).json({
         errors: [{ msg: "Failed to load session details: " + error.message }],
+      });
+    } finally {
+      // Close the database connection if it was opened
+      if (link) await link.end();
+    }
+  }
+);
+
+/**
+ * @async
+ * @route POST /feedback/giveFeedback
+ * @memberof module:feedback
+ * @summary Inserts a feedback submission for a given session.
+ *
+ * @description This route validates the incoming request, and inserts the feedback into the feedback database.
+ * If the request fails at any step, an appropriate error message is returned.
+ *
+ * @requires ./validate - Module for defining validation rules and sanitizing request data.
+ * @requires ./routes/loadGiveFeedback - Reused to check session is not closed.
+ * @requires ./routes/giveFeedback - Contains the logic for inserting the feedback response in the database and sending out notifications.
+ *
+ * @param {object} req.body.data - The data containing the session ID and feedback submission details.
+ * @returns {object} 200 - A success message indicating that the feedback was submitted.
+ * @returns {object} 401 - Error message if the session is closed.
+ * @returns {object} 500 - Error message if submitting the feedback fails.
+ */
+router.post(
+  "/giveFeedback",
+  validate.giveFeedbackRules, // Middleware for validating feedback submission data
+  validate.validateRequest, // Middleware for validating the request based on the rules
+  async (req, res) => {
+    let link; // Database connection variable
+    try {
+      // Get the validated and sanitized data from the request
+      const data = matchedData(req);
+
+      // Open a connection to the database
+      link = await openDbConnection(dbConfig);
+
+      // Check that the session isn't closed
+      const { loadGiveFeedback } = require("./routes/loadGiveFeedback");
+      const session = await loadGiveFeedback(link, data.id);
+      if (session.closed) {
+        res.status(403).json({
+          errors: [{ msg: "Session is closed." }],
+        });
+        return;
+      }
+
+      // Import the function to insert the feedback into the database and send notifications
+      const { giveFeedback } = require("./routes/giveFeedback");
+
+      // Insert the feedback and send notifications
+      await giveFeedback(link, data, session);
+
+      // Respond with a success message
+      res.json({ message: "Your feedback was submitted." });
+    } catch (error) {
+      // Log the error with a timestamp for debugging
+      console.error(new Date().toISOString(), "giveFeedback error:", error);
+
+      // Send a 500 response with the error message
+      res.status(500).json({
+        errors: [{ msg: "Failed to submit feedback: " + error.message }],
       });
     } finally {
       // Close the database connection if it was opened
