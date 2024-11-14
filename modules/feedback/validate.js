@@ -15,6 +15,7 @@
  * @exports loadUpdateSessionRules - Ruleset for the loadUpdateSession route
  * @exports updateSessionRules - Ruleset for the updateSession route
  * @exports resetPinRules - Ruleset for the resetPin route
+ * @exports updateNotificationPreferencesRules - Ruleset for the updateNotificationPreferences route
  * @exports loadGiveFeedback - Ruleset for the loadGiveFeedback route
  * @exports validateRequest - Function to perform the validation and sanitisation according to a given ruleset
  */
@@ -241,6 +242,20 @@ const resetPinRules = [
 ];
 
 /**
+ * Validation rules for the updateNotificationPreferences route.
+ * @type {Array}
+ */
+const updateNotificationPreferencesRules = [
+  ...loadUpdateSessionRules,
+
+  check("notifications")
+    .notEmpty()
+    .withMessage("Notifications preference must be provided.")
+    .isBoolean()
+    .withMessage("Notifications preference field must by data type [boolean]"),
+];
+
+/**
  * Validation rules for the loadGiveFeedbackRules route.
  * @type {Array}
  */
@@ -339,6 +354,7 @@ module.exports = {
   loadUpdateSessionRules,
   updateSessionRules,
   resetPinRules,
+  updateNotificationPreferencesRules,
   loadGiveFeedbackRules,
   giveFeedbackRules,
   validateRequest,

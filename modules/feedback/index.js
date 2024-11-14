@@ -423,6 +423,100 @@ router.post(
 
 /**
  * @async
+ * @route POST /feedback/updateNotificationPreferences
+ * @memberof module:feedback
+ * @summary Changes if an organiser has feedback submission notifications enabled.
+ *
+ * @description This route validates the incoming request, checks the provided organiser's PIN for validity,
+ * then updates the notification settings for that organiser in the database.
+ * If the request fails at any step, an appropriate error message is returned.
+ *
+ * @requires ./validate - Module for defining validation rules and sanitizing request data.
+ * @requires ../utilities/pinUtilities - Utility functions for validating PINs.
+ * @requires ./routes/updateNotificationPreferences - Contains the logic for updating the notification preferences in the database and sending an email to the organiser.
+ * @requires ./routes/updateSession - Reuses getOldSessionDetails
+ *
+ * @param {object} req.body.data - The data containing the session ID and organiser's PIN.
+ *
+ * @returns {object} 200 - A success message indicating that the session was updated.
+ * @returns {object} 401 - Error message if session has already been closed.
+ * @returns {object} 401 - Error message if the PIN is invalid or the user lacks editing rights.
+ * @returns {object} 500 - Error message if updating the session fails.
+ */
+router.post(
+  "/updateNotificationPreferences",
+  validate.updateNotificationPreferencesRules, // Middleware for validating notification preference update request data
+  validate.validateRequest, // Middleware for validating the request based on the rules
+  async (req, res) => {
+    let link; // Database connection variable
+    try {
+      // Get the validated and sanitized data from the request
+      const data = matchedData(req);
+
+      // Open a connection to the database
+      link = await openDbConnection(dbConfig);
+
+      // Retrieve session details from the database
+      const updateSessionRoute = require("./routes/updateSession");
+      const sessionDetails = await updateSessionRoute.getOldSessionDetails(
+        data.id,
+        link
+      );
+
+      // Check if the provided PIN is valid for any organiser
+      const { pinIsValid } = require("../utilities/pinUtilities");
+      const organiserIndex = sessionDetails.organisers.findIndex((organiser) =>
+        pinIsValid(data.pin, organiser.salt, organiser.pinHash)
+      );
+      const organiser = sessionDetails.organisers[organiserIndex];
+      if (!organiser) {
+        res.status(401).json({
+          errors: [{ msg: "Invalid PIN." }],
+        });
+        return;
+      }
+
+      // Close the session in the database
+      const {
+        updateNotificationPreferences,
+      } = require("./routes/updateNotificationPreferences");
+      const sendMailFails = await updateNotificationPreferences(
+        link,
+        data,
+        sessionDetails,
+        organiserIndex
+      );
+
+      // Respond with a success message
+      res.json({
+        message: "Your notification preferences were updated.",
+        sendMailFails,
+      });
+    } catch (error) {
+      // Log the error with a timestamp for debugging
+      console.error(
+        new Date().toISOString(),
+        "updateNotificationPreferences error:",
+        error
+      );
+
+      // Send a 500 response with the error message
+      res.status(500).json({
+        errors: [
+          {
+            msg: "Failed to update notification preferences: " + error.message,
+          },
+        ],
+      });
+    } finally {
+      // Close the database connection if it was opened
+      if (link) await link.end();
+    }
+  }
+);
+
+/**
+ * @async
  * @route POST /feedback/loadGiveFeedback
  * @memberof module:feedback
  * @summary Loads session deails based on the provided session ID.

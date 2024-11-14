@@ -160,4 +160,5 @@ const buildMailBody = (name, appURL, data, pin) => {
 
 module.exports = {
   resetPin,
+  updateOrganiserDetailsInDatabase,
 };
