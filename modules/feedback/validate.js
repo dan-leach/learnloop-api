@@ -242,6 +242,16 @@ const resetPinRules = [
 ];
 
 /**
+ * Validation rules for the findMySessions route
+ * @type {array}
+ */
+const findMySessionsRules = [
+  check("email")
+    .isEmail()
+    .withMessage("Email field must be a valid email address format."),
+];
+
+/**
  * Validation rules for the updateNotificationPreferences route.
  * @type {Array}
  */
@@ -354,6 +364,7 @@ module.exports = {
   loadUpdateSessionRules,
   updateSessionRules,
   resetPinRules,
+  findMySessionsRules,
   updateNotificationPreferencesRules,
   loadGiveFeedbackRules,
   giveFeedbackRules,

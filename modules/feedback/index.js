@@ -517,6 +517,69 @@ router.post(
 
 /**
  * @async
+ * @route POST /feedback/findMySessions
+ * @memberof module:feedback
+ * @summary Sends an email with a list of sessions for which that email is an organiser or facilitator.
+ *
+ * @description
+ * This route allows a user to request an email with details of feedback sessions they are associated with
+ * as an organiser or facilitator. It validates the provided email, checks the database
+ * for sessions matching the criteria, and sends an email containing the session details.
+ * If no matching sessions are found, the email indicates this with an appropriate message.
+ *
+ * @requires ./validate - Module for defining validation rules and sanitizing request data.
+ * @requires ./routes/findMySessions
+ *
+ * @param {object} req.body.data - The data containing the email.
+ *
+ * @returns {object} 200 - A success message indicating that the email of sessions was sent.
+ * @returns {object} 500 - Error message if the process fails.
+ */
+router.post(
+  "/findMySessions",
+  validate.findMySessionsRules, // Middleware for validating find my sessions request data
+  validate.validateRequest, // Middleware for validating the request based on the rules
+  async (req, res) => {
+    let link; // Database connection variable
+    try {
+      // Get the validated and sanitized data from the request
+      const data = matchedData(req);
+
+      // Open a connection to the database
+      link = await openDbConnection(dbConfig);
+
+      // Find and send the sessions
+      const { findMySessions } = require("./routes/findMySessions");
+      const sendMailFails = await findMySessions(data.email, link);
+
+      // Respond with a success message
+      res.json({
+        message: sendMailFails.length
+          ? ""
+          : "Please check your email for session details.",
+        sendMailFails,
+      });
+    } catch (error) {
+      // Log the error with a timestamp for debugging
+      console.error(new Date().toISOString(), "findMySessions error:", error);
+
+      // Send a 500 response with the error message
+      res.status(500).json({
+        errors: [
+          {
+            msg: "Failed to find sessions: " + error.message,
+          },
+        ],
+      });
+    } finally {
+      // Close the database connection if it was opened
+      if (link) await link.end();
+    }
+  }
+);
+
+/**
+ * @async
  * @route POST /feedback/loadGiveFeedback
  * @memberof module:feedback
  * @summary Loads session deails based on the provided session ID.
