@@ -69,6 +69,10 @@ const giveFeedback = async (link, data, session) => {
         `Subsession with id [${subsessionFeedback.id}] not found as subsession for session series [${session.id}].`
       );
     }
+
+    //check the subsession feedback is complete rather than skipped
+    if (subsessionFeedback.status != "Complete") continue;
+
     await insertFeedbackIntoDatabase(
       link,
       subsessionFeedback.id,
@@ -184,6 +188,7 @@ const emailOrganiserNotification = async (
  * @throws {Error} - Throws an error if the database connection is invalid or if the insertion fails.
  */
 const insertFeedbackIntoDatabase = async (link, id, feedback, questions) => {
+  console.error(id, feedback);
   // Ensure a valid database connection is provided
   if (!link) {
     throw new Error("Database connection failed."); // Error if connection is not valid

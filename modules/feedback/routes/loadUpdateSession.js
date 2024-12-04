@@ -11,8 +11,8 @@
  * @requires ../../utilities/dateUtilities - Utilities for formatting date objects into various string representations.
  *
  * @exports loadUpdateSession Core function for the module
- * @exports selectSessionDetails Reused by loadGiveFeedback route
- * @exports selectSubsessionDetails Reused by loadGiveFeedback route
+ * @exports selectSessionDetails Reused by loadGiveFeedback and viewFeedback route
+ * @exports selectSubsessionDetails Reused by loadGiveFeedback and viewFeedback route
  */
 
 const config = require("../../../config.json");

@@ -25,6 +25,7 @@
  * @returns {string} The formatted date as 'dd/mm/yyyy'.
  */
 function formatDateUK(date) {
+  if (isNaN(date)) return "various dates";
   //if string passed, try to convert it to a date object
   if (typeof date === "string") date = new Date(date);
   // Get day, month, and year from the date object

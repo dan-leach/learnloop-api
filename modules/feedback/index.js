@@ -702,4 +702,79 @@ router.post(
   }
 );
 
+/**
+ * @async
+ * @route POST /feedback/viewFeedback
+ * @memberof module:feedback
+ * @summary
+ *
+ * @description
+ *
+ * @requires ./validate - Module for defining validation rules and sanitizing request data.
+ * @requires ../utilities/pinUtilities - Utility functions for validating PINs.
+ * @requires ./routes/viewFeedback - Contains the logic for retreiving the feedback.
+ *
+ * @param {object} req.body.data - The data containing the session ID and organiser's PIN.
+ * @returns {object} 200 - The feedback if successfully loaded.
+ * @returns {object} 401 - Error message if the PIN is invalid or the user lacks editing rights.
+ * @returns {object} 500 - Error message if loading feedback fails.
+ */
+router.post(
+  "/viewFeedback",
+  validate.loadUpdateSessionRules, // Middleware for validating request data
+  validate.validateRequest, // Middleware for validating the request based on the rules
+  async (req, res) => {
+    let link; // Database connection variable
+    try {
+      // Get the validated and sanitized data from the request
+      const data = matchedData(req);
+
+      // Open a connection to the database
+      link = await openDbConnection(dbConfig);
+
+      // Import utility functions for getting organisers and validating PINs
+      const {
+        getOrganisers,
+        pinIsValid,
+      } = require("../utilities/pinUtilities");
+
+      // Retrieve organisers associated with the session ID
+      const organisers = await getOrganisers(data.id, "feedback", link);
+
+      // Check if the provided PIN is valid for any organiser
+      const user = organisers.find((organiser) =>
+        pinIsValid(data.pin, organiser.salt, organiser.pinHash)
+      );
+
+      // Check if the PIN is valid for an organiser
+      if (!user) {
+        res.status(401).json({
+          errors: [{ msg: "Invalid PIN." }],
+        });
+        return;
+      }
+
+      // Import the function to load the session details
+      const { viewFeedback } = require("./routes/viewFeedback");
+
+      // Get the feedback based on the provided session ID
+      const feedback = await viewFeedback(data.id, link);
+
+      // Respond with the feedback
+      res.json(feedback);
+    } catch (error) {
+      // Log the error with a timestamp for debugging
+      console.error(new Date().toISOString(), "viewFeedback error:", error);
+
+      // Send a 500 response with the error message
+      res.status(500).json({
+        errors: [{ msg: "Failed to load feedback report: " + error.message }],
+      });
+    } finally {
+      // Close the database connection if it was opened
+      if (link) await link.end();
+    }
+  }
+);
+
 module.exports = router;
