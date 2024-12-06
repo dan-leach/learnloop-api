@@ -144,6 +144,7 @@ function organiseQuestionFeedback(questions, questionFeedback) {
 
   // Iterate over each set of feedback responses
   questionFeedback.forEach((responseSet) => {
+    if (typeof responseSet != "object") return; //don't try to organise when no feedback found
     responseSet.forEach((response) => {
       console.error("#### response: ", response);
       // Find the matching question for each response

@@ -704,6 +704,89 @@ router.post(
 
 /**
  * @async
+ * @route POST /feedback/fetchCertificate
+ * @memberof module:feedback
+ * @summary Logs attendance data and returns a PDF certificate
+ *
+ * @description
+ *
+ * @requires ./validate - Module for defining validation rules and sanitizing request data.
+ * @requires ../utilities/pinUtilities - Utility functions for validating PINs.
+ * @requires ./routes/insertAttendance - Contains the logic for inserting attendance data into the database.
+ * @requires ./routes/fetchCertificate - Contains the logic for creating a certificate of attendance.
+ *
+ * @param {object} req.body.data - The data containing the session ID, and attendee name, region and organisation.
+ * @returns {object} 200 - ?
+ * @returns {object} 401 - Error message if the session does not have certificate of attendance enabled.
+ * @returns {object} 500 - Error message if inserting the attendance data or building the certificate fails.
+ */
+router.post(
+  "/fetchCertificate",
+  validate.fetchCertificateRules, // Middleware for validating fetch certificate request data
+  validate.validateRequest, // Middleware for validating the request based on the rules
+  async (req, res) => {
+    let link; // Database connection variable
+    try {
+      // Get the validated and sanitized data from the request
+      const data = matchedData(req);
+
+      // Open a connection to the database
+      link = await openDbConnection(dbConfig);
+
+      // Retrieve session details from the database
+      const updateSessionRoute = require("./routes/updateSession");
+      const sessionDetails = await updateSessionRoute.getOldSessionDetails(
+        data.id,
+        link
+      );
+
+      if (sessionDetails.closed) {
+        res.status(401).json({
+          errors: [
+            {
+              msg: `The session '${sessionDetails.title}' has been closed by an organiser.`,
+            },
+          ],
+        });
+        return;
+      }
+
+      if (!sessionDetails.certificate) {
+        res.status(401).json({
+          errors: [
+            {
+              msg: `The session '${sessionDetails.title}' does not have the certificate of attendance option enabled.`,
+            },
+          ],
+        });
+        return;
+      }
+
+      if (sessionDetails.attendance) {
+        // Insert the attendance data
+        const { insertAttendance } = require("./routes/insertAttendance");
+        await insertAttendance(link, data);
+      }
+
+      const { fetchCertificate } = require("./routes/fetchCertificate");
+      await fetchCertificate(sessionDetails, data.attendee, res);
+    } catch (error) {
+      // Log the error with a timestamp for debugging
+      console.error(new Date().toISOString(), "fetchCertificate error:", error);
+
+      // Send a 500 response with the error message
+      res.status(500).json({
+        errors: [{ msg: "Failed to fetch certificate: " + error.message }],
+      });
+    } finally {
+      // Close the database connection if it was opened
+      if (link) await link.end();
+    }
+  }
+);
+
+/**
+ * @async
  * @route POST /feedback/viewFeedback
  * @memberof module:feedback
  * @summary

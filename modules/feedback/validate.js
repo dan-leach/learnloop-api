@@ -350,8 +350,45 @@ const giveFeedbackRules = [
     .escape(),
 ];
 
+/**
+ * Validation rules for the fetchCertificate route.
+ * @type {Array}
+ */
+const fetchCertificateRules = [
+  ...loadGiveFeedbackRules,
+
+  check("attendee")
+    .optional()
+    .isObject()
+    .withMessage("Attendee field must be data type [object]."),
+
+  check("attendee.name")
+    .notEmpty()
+    .withMessage("Attendee name must be provided.")
+    .isString()
+    .withMessage("Attendee name field must be data type [string].")
+    .escape(),
+
+  check("attendee.region")
+    .notEmpty()
+    .withMessage("Attendee region must be provided.")
+    .isString()
+    .withMessage("Attendee region field must be data type [string].")
+    .escape(),
+
+  check("attendee.organisation")
+    .notEmpty()
+    .withMessage("Attendee organisation must be provided.")
+    .isString()
+    .withMessage("Attendee organisation field must be data type [string].")
+    .escape(),
+];
+
 // Middleware function to validate the request
 const validateRequest = (req, res, next) => {
+  //
+  console.error(new Date().toISOString(), "  ----- new req");
+  //
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
@@ -368,5 +405,6 @@ module.exports = {
   updateNotificationPreferencesRules,
   loadGiveFeedbackRules,
   giveFeedbackRules,
+  fetchCertificateRules,
   validateRequest,
 };
