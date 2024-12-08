@@ -860,4 +860,224 @@ router.post(
   }
 );
 
+/**
+ * @async
+ * @route POST /feedback/fetchFeedbackPDF
+ * @memberof module:feedback
+ * @summary Returns a PDF feedback report
+ *
+ * @description
+ *
+ * @requires ./validate - Module for defining validation rules and sanitizing request data.
+ * @requires ../utilities/pinUtilities - Utility functions for validating PINs.
+ * @requires ./routes/fetchFeedbackPDF - Contains the logic for creating a feedback pdf report.
+ *
+ * @param {object} req.body.data - The data containing the session ID and pin.
+ * @returns {object} 200 - ?
+ * @returns {object} 500 - Error message if inserting the attendance data or building the certificate fails.
+ */
+router.post(
+  "/fetchFeedbackPDF",
+  validate.loadUpdateSessionRules, // Middleware for validating fetch attendance pdf request data
+  validate.validateRequest, // Middleware for validating the request based on the rules
+  async (req, res) => {
+    let link; // Database connection variable
+    try {
+      // Get the validated and sanitized data from the request
+      const data = matchedData(req);
+
+      // Open a connection to the database
+      link = await openDbConnection(dbConfig);
+
+      // Import utility functions for getting organisers and validating PINs
+      const {
+        getOrganisers,
+        pinIsValid,
+      } = require("../utilities/pinUtilities");
+
+      // Retrieve organisers associated with the session ID
+      const organisers = await getOrganisers(data.id, "feedback", link);
+
+      // Check if the provided PIN is valid for any organiser
+      const user = organisers.find((organiser) =>
+        pinIsValid(data.pin, organiser.salt, organiser.pinHash)
+      );
+
+      // Check if the PIN is valid for an organiser
+      if (!user) {
+        res.status(401).json({
+          errors: [{ msg: "Invalid PIN." }],
+        });
+        return;
+      }
+
+      const { fetchFeedbackPDF } = require("./routes/fetchFeedbackPDF");
+      await fetchFeedbackPDF(data.id, res, link);
+    } catch (error) {
+      // Log the error with a timestamp for debugging
+      console.error(new Date().toISOString(), "fetchFeedbackPDF error:", error);
+
+      // Send a 500 response with the error message
+      res.status(500).json({
+        errors: [
+          { msg: "Failed to fetch feedback PDF report: " + error.message },
+        ],
+      });
+    } finally {
+      // Close the database connection if it was opened
+      if (link) await link.end();
+    }
+  }
+);
+
+/**
+ * @async
+ * @route POST /feedback/viewAttendance
+ * @memberof module:feedback
+ * @summary
+ *
+ * @description
+ *
+ * @requires ./validate - Module for defining validation rules and sanitizing request data.
+ * @requires ../utilities/pinUtilities - Utility functions for validating PINs.
+ * @requires ./routes/viewAttendance - Contains the logic for retreiving the attendance data.
+ *
+ * @param {object} req.body.data - The data containing the session ID and organiser's PIN.
+ * @returns {object} 200 - The attendance data if successfully loaded.
+ * @returns {object} 401 - Error message if the PIN is invalid.
+ * @returns {object} 500 - Error message if loading attendance data fails.
+ */
+router.post(
+  "/viewAttendance",
+  validate.loadUpdateSessionRules, // Middleware for validating request data
+  validate.validateRequest, // Middleware for validating the request based on the rules
+  async (req, res) => {
+    let link; // Database connection variable
+    try {
+      // Get the validated and sanitized data from the request
+      const data = matchedData(req);
+
+      // Open a connection to the database
+      link = await openDbConnection(dbConfig);
+
+      // Import utility functions for getting organisers and validating PINs
+      const {
+        getOrganisers,
+        pinIsValid,
+      } = require("../utilities/pinUtilities");
+
+      // Retrieve organisers associated with the session ID
+      const organisers = await getOrganisers(data.id, "feedback", link);
+
+      // Check if the provided PIN is valid for any organiser
+      const user = organisers.find((organiser) =>
+        pinIsValid(data.pin, organiser.salt, organiser.pinHash)
+      );
+
+      // Check if the PIN is valid for an organiser
+      if (!user) {
+        res.status(401).json({
+          errors: [{ msg: "Invalid PIN." }],
+        });
+        return;
+      }
+
+      // Import the function to load the attendance data
+      const { viewAttendance } = require("./routes/viewAttendance");
+
+      // Get the feedback based on the provided session ID
+      const attendance = await viewAttendance(data.id, link);
+
+      // Respond with the attendance data
+      res.json(attendance);
+    } catch (error) {
+      // Log the error with a timestamp for debugging
+      console.error(new Date().toISOString(), "viewAttendance error:", error);
+
+      // Send a 500 response with the error message
+      res.status(500).json({
+        errors: [{ msg: "Failed to load attendance report: " + error.message }],
+      });
+    } finally {
+      // Close the database connection if it was opened
+      if (link) await link.end();
+    }
+  }
+);
+
+/**
+ * @async
+ * @route POST /feedback/fetchAttendancePDF
+ * @memberof module:feedback
+ * @summary Returns a PDF attendance report
+ *
+ * @description
+ *
+ * @requires ./validate - Module for defining validation rules and sanitizing request data.
+ * @requires ../utilities/pinUtilities - Utility functions for validating PINs.
+ * @requires ./routes/fetchAttendancePDF - Contains the logic for creating an attendance pdf report.
+ *
+ * @param {object} req.body.data - The data containing the session ID and pin.
+ * @returns {object} 200 - ?
+ * @returns {object} 401 - Error message if the session does not have certificate of attendance enabled.
+ * @returns {object} 500 - Error message if inserting the attendance data or building the certificate fails.
+ */
+router.post(
+  "/fetchAttendancePDF",
+  validate.loadUpdateSessionRules, // Middleware for validating fetch attendance pdf request data
+  validate.validateRequest, // Middleware for validating the request based on the rules
+  async (req, res) => {
+    let link; // Database connection variable
+    try {
+      // Get the validated and sanitized data from the request
+      const data = matchedData(req);
+
+      // Open a connection to the database
+      link = await openDbConnection(dbConfig);
+
+      // Import utility functions for getting organisers and validating PINs
+      const {
+        getOrganisers,
+        pinIsValid,
+      } = require("../utilities/pinUtilities");
+
+      // Retrieve organisers associated with the session ID
+      const organisers = await getOrganisers(data.id, "feedback", link);
+
+      // Check if the provided PIN is valid for any organiser
+      const user = organisers.find((organiser) =>
+        pinIsValid(data.pin, organiser.salt, organiser.pinHash)
+      );
+
+      // Check if the PIN is valid for an organiser
+      if (!user) {
+        res.status(401).json({
+          errors: [{ msg: "Invalid PIN." }],
+        });
+        return;
+      }
+
+      const { fetchAttendancePDF } = require("./routes/fetchAttendancePDF");
+      await fetchAttendancePDF(data.id, res, link);
+    } catch (error) {
+      // Log the error with a timestamp for debugging
+      console.error(
+        new Date().toISOString(),
+        "fetchAttendancePDF error:",
+        error
+      );
+
+      // Send a 500 response with the error message
+      res.status(500).json({
+        errors: [
+          { msg: "Failed to fetch attendance PDF report: " + error.message },
+        ],
+      });
+    } finally {
+      // Close the database connection if it was opened
+      if (link) await link.end();
+    }
+  }
+);
+
 module.exports = router;

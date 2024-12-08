@@ -48,7 +48,8 @@
     },
     "tables": {
       "tblSessions": "tbl_feedback_sessions_v6",
-      "tblSubmissions": "tbl_feedback_submissions_v6"
+      "tblSubmissions": "tbl_feedback_submissions_v6",
+      "tblAttendance": "tbl_feedback_attendance_v6"
     }
   },
   "interaction": {

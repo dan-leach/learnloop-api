@@ -1,1 +1,2 @@
 Restrict CORS on api htaccess 
+Check each api response (esp viewFeedback and viewAttendance for session series) to check no sensitive data leakage

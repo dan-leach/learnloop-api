@@ -67,8 +67,6 @@ async function viewFeedback(id, link) {
     );
     delete session.feedback.questionFeedback;
 
-    console.error("response:", session);
-
     return session;
   } catch (error) {
     throw error;
@@ -146,7 +144,6 @@ function organiseQuestionFeedback(questions, questionFeedback) {
   questionFeedback.forEach((responseSet) => {
     if (typeof responseSet != "object") return; //don't try to organise when no feedback found
     responseSet.forEach((response) => {
-      console.error("#### response: ", response);
       // Find the matching question for each response
       questions.forEach((question) => {
         if (response.title === question.title) {
@@ -174,8 +171,6 @@ function organiseQuestionFeedback(questions, questionFeedback) {
       });
     });
   });
-
-  console.error("questions:", questions);
 
   return questions; // Return the updated questions with feedback organized
 }

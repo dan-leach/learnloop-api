@@ -34,7 +34,6 @@ const dateUtilities = require("../../utilities/dateUtilities");
  * @throws {Error} - Throws an error if the PDF generation process fails, such as a missing logo image, failure in path resolution, or issues with generating the PDF.
  */
 const fetchCertificate = async (sessionDetails, attendee, res) => {
-  console.error(sessionDetails, attendee);
   try {
     // Create a new PDF document
     const doc = new PDFDocument({
