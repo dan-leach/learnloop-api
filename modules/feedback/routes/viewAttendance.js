@@ -1,13 +1,16 @@
 /**
  * @module viewAttendance
  * @memberof module:feedback
- * @summary
- *
+ * @summary Provides functionality to retrieve session details and attendance data.
  * @description
+ * This module retrieves session details and attendance information for a specified session ID.
+ * It organizes attendance data by region and organization for structured presentation.
  *
- * @requires ../../../config.json - Configuration file containing database table settings for feedback data retrieval.
+ * @requires ../../../config.json - Configuration file containing database table settings for attendance data retrieval.
+ * @requires ../../utilities/dateUtilities - Utility module for formatting dates.
+ * @requires ./loadUpdateSession - Module for retrieving session details.
  *
- * @exports viewAttendance Core function for the module
+ * @exports viewAttendance - Core function to retrieve and organize attendance data.
  */
 
 const config = require("../../../config.json");
@@ -15,102 +18,108 @@ const dateUtilities = require("../../utilities/dateUtilities");
 
 /**
  * @function viewAttendance
- * @summary Retrieves session details and attendance for a given session ID.
+ * @memberof module:viewAttendance
+ * @summary Retrieves session details and organizes attendance for a given session ID.
+ * @description
+ * Fetches session details from the database and retrieves attendance data for the session.
+ * Organizes attendance data into a structured format grouped by region and organization.
  *
- * @param {string} id - The session ID.
+ * @param {string} id - The unique identifier of the session.
  * @param {object} link - The database connection object.
- * @returns {object} - The session details and attendance data as a JSON object.
- * @throws {Error} - Throws an error if the attendance data cannot be retrieved.
+ * @returns {object} - An object containing session details and organized attendance data.
+ * @throws {Error} - Throws an error if retrieving session details or attendance data fails.
  */
 async function viewAttendance(id, link) {
   try {
-    // Retrieve session details from the database
     const loadUpdateSessionRoute = require("./loadUpdateSession");
     const session = await loadUpdateSessionRoute.selectSessionDetails(link, id);
 
-    // Remove non-required properties from the organiser data
     delete session.organisers;
     delete session.questions;
     delete session.subsessions;
 
     session.attendance = await selectAttendanceFromDatabase(id, link);
-
     session.attendance = organiseAttendance(session.attendance);
 
-    //Format the session date to ISO format
     session.date = dateUtilities.formatDateUK(session.date);
-    /*
-  // Decode HTML entities in name and title
-  res.name = decodeHtmlEntities(res.name);
-  res.title = decodeHtmlEntities(res.title);
-
-*/
 
     return session;
   } catch (error) {
-    throw error;
+    throw new Error(`Error in viewAttendance: ${error.message}`);
   }
 }
 
 /**
  * @function selectAttendanceFromDatabase
- * @summary Retrieves the session attendance for a specific session ID.
+ * @memberof module:viewAttendance
+ * @summary Retrieves attendance data for a specific session ID from the database.
+ * @description
+ * Fetches attendance records associated with the specified session ID from the database.
+ * Ensures a minimum of three attendees to maintain anonymity for feedback.
  *
- * @param {string} id - The session ID.
+ * @param {string} id - The unique identifier of the session.
  * @param {object} link - The database connection object.
- * @returns {object} - The session attendance data.
- * @throws {Error} - Throws an error if database connection, query preparation, or execution fails.
+ * @returns {Array} - An array of attendance records including attendee names, regions, and organizations.
+ * @throws {Error} - Throws an error if the database connection fails, query execution fails, or if fewer than three attendees exist.
  */
 async function selectAttendanceFromDatabase(id, link) {
-  // Check if the database link (connection) is valid
   if (!link) throw new Error("Database connection failed.");
 
   try {
-    // Prepare SQL query to fetch feedback for the given session ID
     const [result] = await link.execute(
       `SELECT name, region, organisation FROM ${config.feedback.tables.tblAttendance} WHERE id = ? ORDER BY region, organisation, name`,
-      [id] // Session ID is passed as a parameter
+      [id]
     );
 
-    if (result.length < 3)
+    if (result.length < 3) {
       throw new Error(
         "Cannot view attendance where fewer than 3 attendees exist to protect feedback anonymity."
       );
+    }
 
     return result;
   } catch (error) {
-    throw error;
+    throw new Error(`Error retrieving attendance: ${error.message}`);
   }
 }
 
 /**
  * @function organiseAttendance
- * @summary Organizes the feedback responses for each question.
+ * @memberof module:viewAttendance
+ * @summary Organizes attendance data by region and organization.
+ * @description
+ * Processes raw attendance data, grouping attendees by region and organization.
+ * Counts attendees and structures the data for easier interpretation.
  *
- * @param {object} attendance - The attendance organize.
- *
- * @returns {object} - The attendance data organised by region and organisation.
+ * @param {Array} rawAttendance - An array of raw attendance records.
+ * @returns {object} - An object representing organized attendance data:
+ * - `count`: Total number of attendees.
+ * - `regions`: Array of regions, each containing:
+ *   - `name`: Region name.
+ *   - `count`: Number of attendees in the region.
+ *   - `organisations`: Array of organizations, each containing:
+ *     - `name`: Organization name.
+ *     - `count`: Number of attendees in the organization.
+ *     - `attendees`: Array of attendee names.
  */
 function organiseAttendance(rawAttendance) {
   const attendance = {
     count: 0,
     regions: [],
   };
+
   let currentRegionName = "";
   let currentRegion = {};
   let currentOrganisationName = "";
   let currentOrganisation = {};
 
   for (let attendee of rawAttendance) {
-    //get the region of this attendee
     currentRegionName = attendee.region;
 
-    //check if the current attendee's region is already created in attendance object and map it to currentRegion object
     currentRegion = attendance.regions.find(
       (region) => region.name === currentRegionName
     );
 
-    //if not already created, create the region in the attendance object, then map to currentRegion object
     if (!currentRegion) {
       attendance.regions.push({
         name: currentRegionName,
@@ -122,15 +131,12 @@ function organiseAttendance(rawAttendance) {
       );
     }
 
-    //get the organisation of this attendee
     currentOrganisationName = attendee.organisation;
 
-    //check if the current attendee's organisation is already created in currentRegion object and map it to currentOrganisation object
     currentOrganisation = currentRegion.organisations.find(
       (organisation) => organisation.name === currentOrganisationName
     );
 
-    //if not already created, create the region in the attendance object, then map to currentRegion object
     if (!currentOrganisation) {
       currentRegion.organisations.push({
         name: currentOrganisationName,
@@ -142,7 +148,6 @@ function organiseAttendance(rawAttendance) {
       );
     }
 
-    //add the attendees name to the array of attendees for this organisation in this region
     if (!currentOrganisation.attendees.includes(attendee.name)) {
       currentOrganisation.attendees.push(attendee.name);
       currentOrganisation.count++;

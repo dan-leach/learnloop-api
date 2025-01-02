@@ -59,7 +59,7 @@ const insertSession = async (
   const id = await idUtilities.createUniqueId(link, "feedback");
   let leadPin; // Variable to store the lead organiser's PIN
   const mails = []; // Array to store email details for organisers
-  let sendMailFails = []; //Array to store details of any failed emails
+  let sendMailFails = []; // Array to store details of any failed emails
   const subsessionIds = []; // Array to hold IDs of subsessions
 
   if (!isSubsession) {
@@ -185,6 +185,7 @@ const insertSession = async (
  * @param {boolean} canEdit - Indicates whether the organiser has editing privileges for the session.
  * @param {boolean} [isSubsession=false] - Flag indicating whether the session is a subsession.
  * @param {object} [seriesData={}] - Additional data from the parent series if this is a subsession.
+ * @returns {Promise<object>} - Returns an object with the success status of the email dispatch.
  * @throws {Error} - Throws an error if the email dispatch fails or if there are issues with email content generation.
  */
 const emailOrganiserInsert = async (
@@ -198,14 +199,10 @@ const emailOrganiserInsert = async (
   isSubsession = false,
   seriesData = {}
 ) => {
-  // Determine the lead organiser's name; for subsessions, use the parent session's lead
   const leadName = isSubsession ? seriesData.leadName : data.leadName;
+  const appURL = config.client.url;
+  const shortenedAppURL = appURL.replace("https://", "");
 
-  // Define application URLs for email content
-  const appURL = config.client.url; // Base application URL
-  const shortenedAppURL = appURL.replace("https://", ""); // Shortened version for a cleaner email
-
-  // Build the body of the email using provided data
   const body = buildMailBody(
     id,
     pin,
@@ -220,11 +217,8 @@ const emailOrganiserInsert = async (
     seriesData
   );
 
-  // Email heading and subject line
-  const heading = `Feedback request created`; // Static heading for the email
-  const subject = `${heading}: ${data.title}`; // Dynamic subject line based on session title
-
-  // Build HTML structure for the email notification
+  const heading = "Feedback request created";
+  const subject = `${heading}: ${data.title}`;
   const html = mailUtilities.buildMailHTML(
     subject,
     heading,
@@ -234,17 +228,11 @@ const emailOrganiserInsert = async (
     shortenedAppURL
   );
 
-  // Dispatch the email to the organiser
   try {
-    await mailUtilities.sendMail(email, subject, html); // Send the email using the specified parameters
-    return {
-      sendSuccess: true,
-    };
+    await mailUtilities.sendMail(email, subject, html);
+    return { sendSuccess: true };
   } catch (error) {
-    return {
-      sendSuccess: false,
-      error: error.message,
-    };
+    return { sendSuccess: false, error: error.message };
   }
 };
 
@@ -273,36 +261,29 @@ const insertSessionIntoDatabase = async (
   subsessionIds,
   isSubsession
 ) => {
-  // Ensure a valid database connection is provided
   if (!link) {
-    throw new Error("Database connection failed."); // Error if connection is not valid
+    throw new Error("Database connection failed.");
   }
 
-  try {
-    // Construct SQL query for inserting session data
-    const query = `INSERT INTO ${config.feedback.tables.tblSessions} 
+  const query = `INSERT INTO ${config.feedback.tables.tblSessions} 
       (id, name, title, date, multipleDates, organisers, questions, certificate, subsessions, isSubsession, attendance) 
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
-    // Execute the insert query with session data
-    await link.execute(query, [
-      id,
-      data.name, // Session name
-      data.title, // Session title
-      data.multipleDates || isSubsession ? "0000-00-00" : data.date, // Default date for multiple dates or subsessions
-      data.multipleDates, // Flag indicating if there are multiple dates
-      data.organisers, // Organiser details
-      data.questions, // Questions associated with the session
-      data.certificate, // Certificate flag
-      subsessionIds, // IDs of any subsessions
-      isSubsession, // Flag indicating if this is a subsession
-      data.attendance, // Attendance tracking flag
-    ]);
+  await link.execute(query, [
+    id,
+    data.name,
+    data.title,
+    data.multipleDates || isSubsession ? "0000-00-00" : data.date,
+    data.multipleDates,
+    data.organisers,
+    data.questions,
+    data.certificate,
+    subsessionIds,
+    isSubsession,
+    data.attendance,
+  ]);
 
-    return true; // Return true on successful insertion
-  } catch (error) {
-    throw error; // Rethrow the error for handling at a higher level
-  }
+  return true;
 };
 
 /**
@@ -340,51 +321,37 @@ const buildMailBody = (
   isSubsession,
   seriesData
 ) => {
-  // Determine if the session has multiple dates
   let multipleDates = isSubsession
     ? seriesData.multipleDates
     : data.multipleDates;
+  let date = !multipleDates
+    ? dateUtilities.formatDateUK(isSubsession ? seriesData.date : data.date)
+    : null;
 
-  // Format the date for the email
-  let date;
-  if (!multipleDates) {
-    date = dateUtilities.formatDateUK(
-      isSubsession ? seriesData.date : data.date
-    );
-  }
-
-  // Start building the email body
   let body = `
         <p>Hello ${name},<br><br>
         A feedback request has been successfully created${
           isLead ? "" : " by " + leadName
         } on <a href='${appURL}'>LearnLoop</a> for your session '${
     data.title
-  }' delivered on ${multipleDates ? "multiple dates" : date}. `;
+  }' delivered on ${multipleDates ? "multiple dates" : date}.`;
 
-  // Additional information based on whether this is a subsession
   if (isSubsession) {
-    body += `This session is part of the series '${seriesData.title}'. `;
+    body += ` This session is part of the series '${seriesData.title}'. `;
   } else {
-    // Include details specific to the lead organiser
-    if (isLead) {
-      body += `You are the lead organiser for this event. Your access to the session cannot be removed, and you have editing rights. `;
-    } else {
-      body += canEdit
-        ? `You have been given editing rights for this session. `
-        : `You have been given viewing rights for this session. `;
-    }
+    body += isLead
+      ? ` You are the lead organiser for this event. Your access to the session cannot be removed, and you have editing rights. `
+      : canEdit
+      ? ` You have been given editing rights for this session. `
+      : ` You have been given viewing rights for this session. `;
   }
 
-  // Include session ID and PIN details
   body += `</p><p>Please keep this email for future reference.</p>
         <span style='font-size:2em'>Your session ID is <strong>${id}</strong><br>
         Your session PIN is <strong>${pin}</strong></span><br>
         Do not share your PIN or this email with attendees. 
-        <a href='${appURL}/feedback/resetPIN/${id}'>Reset your PIN</a>.<br>
-    `;
+        <a href='${appURL}/feedback/resetPIN/${id}'>Reset your PIN</a>.<br>`;
 
-  // Add information about subsessions if applicable
   if (data.subsessions && data.subsessions.length) {
     body +=
       data.subsessions.length === 1
@@ -397,7 +364,6 @@ const buildMailBody = (
             .join("")}</ul>`;
   }
 
-  // Include additional questions if any
   if (data.questions && data.questions.length) {
     body += `The following additional questions will be asked:<ul>
             ${data.questions
@@ -406,32 +372,25 @@ const buildMailBody = (
             </ul>`;
   }
 
-  // Provide edit link if the recipient has editing rights
   if (canEdit) {
     body += `<a href='${appURL}/feedback/edit/${id}'>Edit your session</a>. This option is only available <strong>before</strong> feedback has been submitted.`;
   }
 
-  // Provide instructions for directing attendees to the feedback form
   body += `
         <p style='font-size:1.5em'>How to direct attendees to the feedback form</p>
         ${
           isSubsession
-            ? `
-            <p>The organiser of this session series will share the feedback link for the whole series with attendees.</p>
-        `
-            : `
-            You can share the direct link: <a href='${appURL}/${id}'>${shortenedAppURL}/${id}</a><br>
+            ? `<p>The organiser of this session series will share the feedback link for the whole series with attendees.</p>`
+            : `You can share the direct link: <a href='${appURL}/${id}'>${shortenedAppURL}/${id}</a><br>
             Or, ask them to go to <a href='${appURL}'>${shortenedAppURL}</a> and enter the session ID.<br>
             Or, <a href='${appURL}/feedback/instructions/${id}'>show a page with instructions on how to reach the feedback form</a> including a QR code for your attendees to scan.<br>
             ${
               data.certificate
                 ? "<br>Don't forget to let your attendees know that they'll be able to download a certificate of attendance after completing feedback."
                 : ""
-            }
-        `
+            }`
         }`;
 
-  // Provide a link to view feedback submissions
   body += `
         <p style='font-size:1.5em'>View your feedback</p>
         <p>Go to <a href='${appURL}/feedback/view/${id}'>${shortenedAppURL}/feedback/view/${id}</a> and enter your PIN to retrieve submitted feedback.<br>
@@ -441,10 +400,9 @@ const buildMailBody = (
             ? `The attendance register is <strong>enabled</strong>. <a href='${appURL}/feedback/attendance/${id}'>View attendance register</a>.<br>`
             : ""
         }
-        <br><br>
-    `;
+        <br><br>`;
 
-  return body; // Return the constructed email body
+  return body;
 };
 
 module.exports = { insertSession, emailOrganiserInsert };

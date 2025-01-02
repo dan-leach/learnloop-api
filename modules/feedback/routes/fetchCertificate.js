@@ -3,8 +3,9 @@
  * @memberof module:feedback
  * @summary Generates a PDF certificate of attendance for a specific session and attendee.
  *
- * This module exports a function that generates a PDF certificate of attendance with session details, attendee's name, and session information.
- * The generated PDF is sent directly to the client as a downloadable file.
+ * @description
+ * This module provides functionality to create a PDF certificate of attendance, including session details,
+ * the attendee's name, and relevant information. The PDF is sent directly to the client as a downloadable file.
  *
  * @requires PDFKit - A library for creating PDFs in Node.js.
  * @requires path - For resolving file paths.
@@ -25,13 +26,16 @@ const dateUtilities = require("../../utilities/dateUtilities");
  * @memberof module:fetchCertificate
  * @summary Generates and serves a PDF certificate of attendance.
  *
- * @param {object} sessionDetails - The details of the session, including the session title, session date, and any subsessions.
+ * @description
+ * Generates a personalized PDF certificate of attendance for a specified session and attendee. The certificate
+ * includes session details, attendee information, and additional notes, and is streamed to the client as a
+ * downloadable PDF file.
+ *
+ * @param {object} sessionDetails - The details of the session, including the title, date, and any subsessions.
  * @param {object} attendee - The attendee's information, including their name.
  * @param {object} res - The HTTP response object to stream the PDF to the client.
- *
  * @returns {Promise<boolean>} - Resolves to `true` if the PDF is generated and sent successfully.
- *
- * @throws {Error} - Throws an error if the PDF generation process fails, such as a missing logo image, failure in path resolution, or issues with generating the PDF.
+ * @throws {Error} - Throws an error if the PDF generation process fails, such as issues with file paths or the PDF library.
  */
 const fetchCertificate = async (sessionDetails, attendee, res) => {
   try {

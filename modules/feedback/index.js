@@ -12,6 +12,7 @@
  * @requires express
  * @requires router
  * @requires express-validator
+ * @requires entities For decoding html entities
  * @requires ./validate Rulesets and validation function for each route
  * @requires ../utilities/dbUtilities Database link configuration and function for opening connection
  *
@@ -23,6 +24,35 @@ const router = express.Router();
 const { matchedData } = require("express-validator");
 const validate = require("./validate");
 const { dbConfig, openDbConnection } = require("../utilities/dbUtilities");
+const { decode } = require("entities");
+
+/**
+ * @function decodeObjectStrings
+ * @memberof module:feedback
+ * @summary Recursively decodes html strings within an object
+ *
+ * @param {object} obj the object containing strings to be decoded
+ * @returns {object} the object with decoded strings
+ */
+function decodeObjectStrings(obj) {
+  if (typeof obj === "string") {
+    return decode(obj);
+  } else if (Array.isArray(obj)) {
+    return obj.map(decodeObjectStrings);
+  } else if (typeof obj === "object" && obj !== null) {
+    const decodedObj = {};
+    for (const key in obj) {
+      if (obj.hasOwnProperty(key)) {
+        if (key != "date") {
+          //don't decode date as returns NaN
+          decodedObj[key] = decodeObjectStrings(obj[key]);
+        }
+      }
+    }
+    return decodedObj;
+  }
+  return obj; // Return non-string, non-object values as is
+}
 
 /**
  * @async
@@ -138,11 +168,26 @@ router.post(
         return;
       }
 
+      // Check if session already has submitted feedback
+      const viewFeedbackRoute = require("./routes/viewFeedback");
+      const feedback = await viewFeedbackRoute.selectFeedbackFromDatabase(
+        data.id,
+        link
+      );
+      if (!isNaN(feedback.score[0])) {
+        res.status(401).json({
+          errors: [
+            { msg: "Cannot edit session once feedback has been submitted." },
+          ],
+        });
+        return;
+      }
+
       // Import the function to load the session details
       const { loadUpdateSession } = require("./routes/loadUpdateSession");
 
       // Get the session details based on the provided session ID
-      const session = await loadUpdateSession(link, data.id);
+      let session = await loadUpdateSession(link, data.id);
 
       // Check that the session isn't closed
       if (session.closed) {
@@ -153,6 +198,7 @@ router.post(
       }
 
       // Respond with the session details
+      session = decodeObjectStrings(session);
       res.json(session);
     } catch (error) {
       // Log the error with a timestamp for debugging
@@ -231,6 +277,21 @@ router.post(
       if (!user.canEdit) {
         res.status(401).json({
           errors: [{ msg: "User does not have editing rights." }],
+        });
+        return;
+      }
+
+      // Check if session already has submitted feedback
+      const viewFeedbackRoute = require("./routes/viewFeedback");
+      const feedback = await viewFeedbackRoute.selectFeedbackFromDatabase(
+        data.id,
+        link
+      );
+      if (!isNaN(feedback.score[0])) {
+        res.status(401).json({
+          errors: [
+            { msg: "Cannot edit session once feedback has been submitted." },
+          ],
         });
         return;
       }
@@ -611,7 +672,7 @@ router.post(
       const { loadGiveFeedback } = require("./routes/loadGiveFeedback");
 
       // Get the session details based on the provided session ID
-      const session = await loadGiveFeedback(link, data.id);
+      let session = await loadGiveFeedback(link, data.id);
 
       // Check that the session isn't closed
       if (session.closed) {
@@ -622,6 +683,7 @@ router.post(
       }
 
       // Respond with the session details
+      session = decodeObjectStrings(session);
       res.json(session);
     } catch (error) {
       // Log the error with a timestamp for debugging
@@ -841,9 +903,10 @@ router.post(
       const { viewFeedback } = require("./routes/viewFeedback");
 
       // Get the feedback based on the provided session ID
-      const feedback = await viewFeedback(data.id, link);
+      let feedback = await viewFeedback(data.id, link);
 
       // Respond with the feedback
+      feedback = decodeObjectStrings(feedback);
       res.json(feedback);
     } catch (error) {
       // Log the error with a timestamp for debugging
@@ -986,9 +1049,10 @@ router.post(
       const { viewAttendance } = require("./routes/viewAttendance");
 
       // Get the feedback based on the provided session ID
-      const attendance = await viewAttendance(data.id, link);
+      let attendance = await viewAttendance(data.id, link);
 
       // Respond with the attendance data
+      attendance = decodeObjectStrings(attendance);
       res.json(attendance);
     } catch (error) {
       // Log the error with a timestamp for debugging

@@ -1,30 +1,36 @@
 /**
  * @module updateNotificationPreferences
- * @memberof module:feedback
  * @summary Module for updating notification preferences for an organiser.
  *
  * @description
- * This module provides functionality to update the notification prefernce for an organiser in the database
- * and send an email notification that this has happened.
+ * Provides functionality to update an organiser's notification preferences in the database
+ * and sends an email to notify them of the update.
  *
- * @requires ../../../config.json - Configuration file containing database table
- * settings for session data retrieval.
+ * @requires ../../../config.json - Configuration file containing database and client settings.
+ * @requires ./resetPin - For updating organiser details in the database.
+ * @requires ./updateSession - For sending email notifications to organisers.
  *
- * @exports updateNotificationPreferences Core function for the module
+ * @exports updateNotificationPreferences - Core function for updating notification preferences.
  */
+
+const config = require("../../../config.json");
 
 /**
  * @async
  * @function updateNotificationPreferences
  * @memberof module:updateNotificationPreferences
- * @summary Updates the notification preference and sends a email notification.
+ * @summary Updates the notification preferences and sends an email notification.
+ *
+ * @description
+ * Updates the organiser's notification preferences in the database and sends a confirmation
+ * email about the change. Relies on external modules to handle database updates and email dispatch.
  *
  * @param {object} link - Database connection for executing SQL queries.
- * @param {object} data - The request containing the notification preference.
- * @param {object} sessionDetails - The details of the session being updated.
- * @param {object} organiserIndex - The index of the organiser in organsiers array making the preference change.
- * @returns {Promise<array>} - Returns array of any emails that failed to send.
- * @throws {Error} - Throws an error for any issues during the closure process.
+ * @param {object} data - The request data containing the notification preferences and session ID.
+ * @param {object} sessionDetails - The session details including organiser information.
+ * @param {number} organiserIndex - The index of the organiser in the organisers array.
+ * @returns {Promise<Array<object>>} - Array of failed email attempts, if any.
+ * @throws {Error} - Throws an error for issues during database updates or email sending.
  */
 const updateNotificationPreferences = async (
   link,
@@ -32,12 +38,11 @@ const updateNotificationPreferences = async (
   sessionDetails,
   organiserIndex
 ) => {
-  //set the notifications preference in the organisers array
+  // Update the notification preference in the organisers array
   sessionDetails.organisers[organiserIndex].notifications = data.notifications;
-
   const organiser = sessionDetails.organisers[organiserIndex];
 
-  //update the organisers array in the database
+  // Update the organisers array in the database
   const resetPinRoute = require("./resetPin");
   await resetPinRoute.updateOrganiserDetailsInDatabase(
     link,
@@ -45,22 +50,24 @@ const updateNotificationPreferences = async (
     sessionDetails.organisers
   );
 
-  // Notify organiser of the closure
+  // Notify the organiser of the update
   const updateSessionRoute = require("./updateSession");
-  let sendMailFails = [];
+  const sendMailFails = [];
   const emailOutcome = await updateSessionRoute.emailOrganiserUpdate(
     sessionDetails,
-    {},
+    {}, // No specific additional data required
     organiser,
     buildMailBodyUpdateNotificationPreference,
-    "Notification preference updated"
+    "Notification Preference Updated"
   );
-  if (!emailOutcome.sendSuccess)
+
+  if (!emailOutcome.sendSuccess) {
     sendMailFails.push({
       name: organiser.name,
       email: organiser.email,
       error: emailOutcome.error,
     });
+  }
 
   return sendMailFails;
 };
@@ -68,15 +75,16 @@ const updateNotificationPreferences = async (
 /**
  * @function buildMailBodyUpdateNotificationPreference
  * @memberof module:updateNotificationPreferences
- * @summary Constructs the email body for notifying organiser about their notification preference update.
+ * @summary Constructs the email body to notify the organiser about the update.
  *
- * @requires ../../../config.json - For the client URL
+ * @description
+ * Generates an HTML email body to inform the organiser of the updated notification preferences.
  *
- * @param {Object} data - The session details.
- * @param {Object} user - Not required for this buildMailBody function.
- * @param {Object} recipient - The recipient of the email, containing their name.
- * @param {Object} seriesData - Not required for this buildMailBody function.
- * @returns {string} - The constructed HTML body for the email.
+ * @param {object} data - The session details including the title.
+ * @param {object} user - Unused in this function, reserved for future extensions.
+ * @param {object} recipient - The recipient details, including their name and updated preferences.
+ * @param {object} seriesData - Unused in this function, reserved for future extensions.
+ * @returns {string} - The constructed HTML email body.
  */
 const buildMailBodyUpdateNotificationPreference = (
   data,
@@ -84,20 +92,17 @@ const buildMailBodyUpdateNotificationPreference = (
   recipient,
   seriesData = {}
 ) => {
-  const config = require("../../../config.json");
-  // Initialize the email body with a greeting and removal details
-  let body = `
-            <p>Hello ${recipient.name},</p>
-            <p>Your feedback submission notification preferences have been updated on <a href='${
-              config.client.url
-            }'>LearnLoop</a> for the session '${
+  const body = `
+    <p>Hello ${recipient.name},</p>
+    <p>Your feedback submission notification preferences have been updated on 
+      <a href='${config.client.url}'>LearnLoop</a> for the session '<strong>${
     data.title
-  }'. Notifications are now <strong>${
-    recipient.notifications ? "enabled" : "disabled"
-  }</strong>.</p>
-        `;
-
-  return body; // Return the constructed email body
+  }</strong>'.</p>
+    <p>Notifications are now <strong>${
+      recipient.notifications ? "enabled" : "disabled"
+    }</strong>.</p>
+  `;
+  return body;
 };
 
 module.exports = { updateNotificationPreferences };

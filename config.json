@@ -419,6 +419,7 @@
     "url": "https://api.learnloop.co.uk/",
     "imagesUrl": "https://api.learnloop.co.uk/interaction/uploads/img/",
     "timeoutDuration": 15000,
-    "showConsole": true
+    "showConsole": true,
+    "notificationTimeoutHours": 2
   }
 }

@@ -5,13 +5,13 @@
  *
  * @description
  * Provides functionality for inserting new feedback submissions, including inserting feedback details into the database
- * and notifying organisers via email. In the case of session series, feedback is inserted for each subsession.
+ * and notifying organisers via email. For session series, feedback is inserted for each subsession.
  *
  * @requires ../../../config.json - Configuration settings for the application.
  * @requires ../../utilities/mailUtilities - Utilities for sending email notifications.
  * @requires ../../utilities/dateUtilities - Utilities for formatting date objects.
  *
- * @exports giveFeedback - Function for inserting a new session into the database and notifying organisers.
+ * @exports giveFeedback - Function for inserting feedback submissions and notifying organisers.
  */
 
 const config = require("../../../config.json");
@@ -21,17 +21,16 @@ const mailUtilities = require("../../utilities/mailUtilities");
  * @async
  * @function giveFeedback
  * @memberof module:giveFeedback
- * @summary Inserts a feedback submission into the database and sends notification emails to organisers.
+ * @summary Inserts feedback into the database and sends notification emails to organisers.
  *
  * @description This function processes a feedback submission for a main session and any related subsessions.
- * It inserts the feedback data into the database and then gathers email information for organisers associated
- * with the session and its subsessions who have opted in for notifications. The function iterates over each
- * organiser, checking if they have notifications enabled, and sends an email notification if required.
+ * It inserts feedback data into the database and notifies organisers who have opted in for notifications.
  *
  * @param {object} link - Database connection for database queries.
- * @param {object} data - The feedback submission data, including the session ID.
- * @returns {Promise<boolean>} - True if the process completes successfully
- * @throws {Error} - Throws an error if the database connection fails or if the feedback insertion fails.
+ * @param {object} data - The feedback submission data, including session ID and feedback details.
+ * @param {object} session - The session details, including subsessions if applicable.
+ * @returns {Promise<boolean>} - Resolves to true if the process completes successfully.
+ * @throws {Error} - Throws an error if database operations or email dispatch fail.
  */
 const giveFeedback = async (link, data, session) => {
   const mails = []; // Array to store email details for organisers
@@ -44,34 +43,43 @@ const giveFeedback = async (link, data, session) => {
     data.questions
   );
 
-  // Retrieve organisers associated with the session ID
+  // Retrieve organisers associated with the session
   const { getOrganisers } = require("../../utilities/pinUtilities");
   const organisers = await getOrganisers(data.id, "feedback", link);
+  const currentTime = Date.now();
+  const notificationTimeout =
+    config.api.notificationTimeoutHours * 60 * 60 * 1000;
 
   for (let organiser of organisers) {
     if (organiser.notifications) {
-      mails.push({
-        name: organiser.name,
-        email: organiser.email,
-        isLead: organiser.isLead,
-        session: session,
-      });
+      // Check organiser has notifications enabled
+      if (currentTime - organiser.lastSent > notificationTimeout) {
+        // Check organiser hasn't received another notification email within last 2 hours
+        mails.push({
+          name: organiser.name,
+          email: organiser.email,
+          isLead: organiser.isLead,
+          session,
+        });
+
+        organiser.lastSent = currentTime;
+      }
     }
   }
 
   for (let subsessionFeedback of data.subsessions) {
-    //check that the subsession is part of the session series
+    // Validate the subsession as part of the session series
     const subsession = session.subsessions.find(
-      (subsession) => subsession.id === subsessionFeedback.id
+      (sub) => sub.id === subsessionFeedback.id
     );
     if (!subsession) {
       throw new Error(
-        `Subsession with id [${subsessionFeedback.id}] not found as subsession for session series [${session.id}].`
+        `Subsession with ID [${subsessionFeedback.id}] not found in session series [${session.id}].`
       );
     }
 
-    //check the subsession feedback is complete rather than skipped
-    if (subsessionFeedback.status != "Complete") continue;
+    // Skip feedback not marked as complete (e.g. "skipped")
+    if (subsessionFeedback.status !== "Complete") continue;
 
     await insertFeedbackIntoDatabase(
       link,
@@ -116,7 +124,7 @@ const giveFeedback = async (link, data, session) => {
  * @async
  * @function emailOrganiserNotification
  * @memberof module:giveFeedback
- * @summary Sends an email notification to an organiser regarding a feedback submission.
+ * @summary Sends an email notification to an organiser regarding feedback submissions.
  *
  * @description This function constructs and sends an email notification to an organiser to inform them
  * of a recent feedback submission.
@@ -135,18 +143,14 @@ const emailOrganiserNotification = async (
   isLead,
   seriesData = {}
 ) => {
-  // Define application URLs for email content
   const appURL = config.client.url; // Base application URL
-  const shortenedAppURL = appURL.replace("https://", ""); // Shortened version for a cleaner email
+  const shortenedAppURL = appURL.replace("https://", ""); // Shortened version for email
 
-  // Build the body of the email using provided data
   const body = buildMailBody(name, appURL, shortenedAppURL, data, seriesData);
 
-  // Email heading and subject line
-  const heading = `Feedback notification`; // Static heading for the email
-  const subject = `${heading}: ${data.title}`; // Dynamic subject line based on session title
+  const heading = `Feedback notification`;
+  const subject = `${heading}: ${data.title}`;
 
-  // Build HTML structure for the email notification
   const html = mailUtilities.buildMailHTML(
     subject,
     heading,
@@ -156,17 +160,11 @@ const emailOrganiserNotification = async (
     shortenedAppURL
   );
 
-  // Dispatch the email to the organiser
   try {
-    await mailUtilities.sendMail(email, subject, html); // Send the email using the specified parameters
-    return {
-      sendSuccess: true,
-    };
+    await mailUtilities.sendMail(email, subject, html);
+    return { sendSuccess: true };
   } catch (error) {
-    return {
-      sendSuccess: false,
-      error: error.message,
-    };
+    return { sendSuccess: false, error: error.message };
   }
 };
 
@@ -174,32 +172,27 @@ const emailOrganiserNotification = async (
  * @async
  * @function insertFeedbackIntoDatabase
  * @memberof module:giveFeedback
- * @summary Inserts a feedback submission into the database.
+ * @summary Inserts feedback into the database.
  *
- * @description Performs an SQL insert operation into the specified feedback submission table.
- * It verifies that a valid database connection is provided before attempting the insertion.
- * The function constructs an SQL query with the feedback data and executes it using the provided database connection.
+ * @description Executes an SQL insert operation into the feedback table.
  *
  * @param {object} link - The database connection object for executing queries.
- * @param {string} id - The unique identifier for the session being inserted.
+ * @param {string} id - The unique identifier for the session.
  * @param {object} feedback - The feedback data to be inserted.
- * * @param {object} questions - The questions data with responses to be inserted.
- * @returns {Promise<boolean>} - Returns true if the insertion is successful.
- * @throws {Error} - Throws an error if the database connection is invalid or if the insertion fails.
+ * @param {object} questions - The questions data with responses to be inserted.
+ * @returns {Promise<boolean>} - Resolves to true if the insertion succeeds.
+ * @throws {Error} - Throws an error if the database connection or query execution fails.
  */
 const insertFeedbackIntoDatabase = async (link, id, feedback, questions) => {
-  // Ensure a valid database connection is provided
   if (!link) {
-    throw new Error("Database connection failed."); // Error if connection is not valid
+    throw new Error("Database connection failed.");
   }
 
   try {
-    // Construct SQL query for inserting session data
     const query = `INSERT INTO ${config.feedback.tables.tblSubmissions} 
       (id, positive, negative, questions, score) 
       VALUES (?, ?, ?, ?, ?)`;
 
-    // Execute the insert query with session data
     await link.execute(query, [
       id,
       feedback.positive,
@@ -208,16 +201,18 @@ const insertFeedbackIntoDatabase = async (link, id, feedback, questions) => {
       feedback.score,
     ]);
 
-    return true; // Return true on successful insertion
+    return true;
   } catch (error) {
-    throw error; // Rethrow the error for handling at a higher level
+    throw error;
   }
 };
 
 /**
  * @function buildMailBody
  * @memberof module:giveFeedback
- * @summary Builds the HTML body for the email notification regarding a feedback submission.
+ * @summary Constructs the email body for feedback notifications.
+ *
+ * @description Builds the HTML body of the email sent to organisers regarding feedback submissions.
  *
  * @param {string} name - The name of the recipient (organiser).
  * @param {string} appURL - The full application URL.
@@ -227,7 +222,6 @@ const insertFeedbackIntoDatabase = async (link, id, feedback, questions) => {
  * @returns {string} - The constructed HTML body for the email.
  */
 const buildMailBody = (name, appURL, shortenedAppURL, data, seriesData) => {
-  // Start building the email body
   let body = `
         <p>Hello ${name},<br><br>
         An attendee has submitted feedback for your session <strong>'${data.title}'</strong>.`;
@@ -243,7 +237,43 @@ const buildMailBody = (name, appURL, shortenedAppURL, data, seriesData) => {
   <p><a href='${appURL}/?notifications=${data.id}'>Update your notification preferences</a> if you don't want to receive these emails.</p>
 `;
 
-  return body; // Return the constructed email body
+  return body;
+};
+
+/**
+ * @async
+ * @function updateLastSentInDatabase
+ * @memberof module:giveFeedback
+ * @summary Updates the organisers object with new lastSent values for a session in the database.
+ *
+ * @description Executes an SQL insert operation into the sessions table.
+ *
+ * @param {object} link - The database connection object for executing queries.
+ * @param {string} id - The unique identifier for the session.
+ * @param {object} organisers - The organisers data with the updated lastSent values to be updated.
+ * @returns {Promise<boolean>} - Resolves to true if the update succeeds.
+ * @throws {Error} - Throws an error if the database connection or query execution fails.
+ */
+const updateLastSentInDatabase = async (link, id, organisers) => {
+  if (!link) {
+    throw new Error("Database connection failed.");
+  }
+
+  try {
+    // Serialize the organisers object if necessary
+    //const organisers = JSON.stringify(organisers); // Assuming 'organisers' is an object or array
+
+    // Update the session with the new organisers data
+    const query = `UPDATE ${config.feedback.tables.tblSessions} 
+      SET organisers = ? 
+      WHERE id = ?`;
+
+    await link.execute(query, [organisersData, id]);
+
+    return true;
+  } catch (error) {
+    throw error;
+  }
 };
 
 module.exports = { giveFeedback };

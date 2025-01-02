@@ -1,17 +1,16 @@
 /**
  * @module closeSession
  * @memberof module:feedback
- * @summary Module for closing a session to further feedback submissions.
+ * @summary Handles the closure of a feedback session and notifies relevant organisers.
  *
  * @description
- * This module provides functionality to close an active feedback session, update the session status in the database,
- * and notify all associated organizers except the one performing the closure.
+ * This module provides functionality to close an active feedback session, update its status in the database,
+ * and notify all associated organisers except the one performing the closure.
  *
- * @requires ../../../config.json - Configuration file containing database table
- * settings for session data retrieval.
- * @requires ./insertSession - For inserting new subsessions as part of an session series update.
+ * @requires ../../../config.json - Configuration file containing client URL and other settings.
+ * @requires ./updateSession - Module for updating session details and emailing organisers.
  *
- * @exports closeSession Core function for the module
+ * @exports closeSession - Core function for closing sessions.
  */
 
 /**
@@ -20,37 +19,50 @@
  * @memberof module:closeSession
  * @summary Closes a session to further feedback and notifies organisers other than the one performing the closure.
  *
- * @requires ./updateSession - Uses existing update functions for getting the session details and closing a session in the database
+ * @description
+ * This function updates the session status in the database and sends email notifications to organisers,
+ * excluding the organiser who initiated the closure. Any email sending failures are returned.
  *
  * @param {object} link - Database connection for executing SQL queries.
- * @param {object} sessionDetails - The details of the session being closed.
- * @param {object} user - The user making the update, including their email.
- * @returns {Promise<array>} - Returns array of any emails that failed to send.
- * @throws {Error} - Throws an error for any issues during the closure process.
+ * @param {object} sessionDetails - The details of the session being closed, including its ID and organisers.
+ * @param {object} user - The user initiating the closure, including their email and name.
+ * @returns {Promise<array>} - Resolves to an array of objects containing details of failed email notifications, if any.
+ * @throws {Error} - Throws an error if the session cannot be updated or notifications fail.
  */
 const closeSession = async (link, sessionDetails, user) => {
   const updateSessionRoute = require("./updateSession");
 
-  // Close session in the database
+  // Update session status in the database to closed
   await updateSessionRoute.closeSessionInDatabase(link, sessionDetails.id);
 
-  // Notify organisers of the closure
-  let sendMailFails = [];
-  for (let organiser of sessionDetails.organisers) {
-    if (organiser.email === user.email) continue;
-    const emailOutcome = await updateSessionRoute.emailOrganiserUpdate(
-      sessionDetails,
-      user,
-      organiser,
-      buildMailBodyClosure,
-      "Feedback request closed"
-    );
-    if (!emailOutcome.sendSuccess)
+  // Notify other organisers of the session closure
+  const sendMailFails = [];
+  for (const organiser of sessionDetails.organisers) {
+    if (organiser.email === user.email) continue; // Skip notifying the organiser performing the closure
+
+    try {
+      const emailOutcome = await updateSessionRoute.emailOrganiserUpdate(
+        sessionDetails,
+        user,
+        organiser,
+        buildMailBodyClosure,
+        "Feedback request closed"
+      );
+
+      if (!emailOutcome.sendSuccess) {
+        sendMailFails.push({
+          name: organiser.name,
+          email: organiser.email,
+          error: emailOutcome.error,
+        });
+      }
+    } catch (error) {
       sendMailFails.push({
         name: organiser.name,
         email: organiser.email,
-        error: emailOutcome.error,
+        error: error.message,
       });
+    }
   }
 
   return sendMailFails;
@@ -61,25 +73,23 @@ const closeSession = async (link, sessionDetails, user) => {
  * @memberof module:closeSession
  * @summary Constructs the email body for notifying organisers about the closure of a session.
  *
- * @description This function generates a personalized email body that informs the recipient of the closure
- * of their feedback request, including relevant session and series details.
+ * @description
+ * Generates a personalized email body to inform organisers of the closure of their feedback request,
+ * including relevant session details and a link to the client application.
  *
- * @requires ../../../config.json - For the client URL
- *
- * @param {Object} data - The session details.
- * @param {Object} user - The user who closed the session.
- * @param {Object} recipient - The recipient of the email, containing their name.
+ * @param {object} data - The session details, including title and ID.
+ * @param {object} user - The user who closed the session, including their name.
+ * @param {object} recipient - The recipient of the email, including their name.
  * @returns {string} - The constructed HTML body for the email.
  */
 const buildMailBodyClosure = (data, user, recipient) => {
   const config = require("../../../config.json");
-  // Initialize the email body with a greeting and removal details
-  let body = `
-          <p>Hello ${recipient.name},</p>
-          <p>Your feedback request on <a href='${config.client.url}'>LearnLoop</a> for the session '${data.title}' has been closed by ${user.name}. No further feedback can be submitted, but any submitted previously can still be viewed.</p>
-      `;
 
-  return body; // Return the constructed email body
+  // Construct the email body
+  return `
+    <p>Hello ${recipient.name},</p>
+    <p>Your feedback request on <a href='${config.client.url}'>LearnLoop</a> for the session '${data.title}' has been closed by ${user.name}. No further feedback can be submitted, but any previously submitted feedback can still be viewed.</p>
+  `;
 };
 
 module.exports = { closeSession };

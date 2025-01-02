@@ -1,13 +1,18 @@
 /**
  * @module viewFeedback
  * @memberof module:feedback
- * @summary
- *
+ * @summary Provides functionality to retrieve session details and organize feedback.
  * @description
+ * This module is responsible for retrieving session details, feedback data,
+ * and organizing feedback for each session or its subsessions.
+ * It includes utilities for fetching and processing feedback data from the database.
  *
  * @requires ../../../config.json - Configuration file containing database table settings for feedback data retrieval.
+ * @requires ../../utilities/dateUtilities - Utility module for formatting dates.
+ * @requires ./loadUpdateSession - Module for retrieving session and subsession details.
  *
- * @exports viewFeedback Core function for the module
+ * @exports viewFeedback - Core function for retrieving and processing feedback data.
+ * @exports selectFeedbackFromDatabase - Helper function to retrieve feedback from the database.
  */
 
 const config = require("../../../config.json");
@@ -15,43 +20,34 @@ const dateUtilities = require("../../utilities/dateUtilities");
 
 /**
  * @function viewFeedback
+ * @memberof module:feedback
  * @summary Retrieves session details and feedback for a given session ID.
+ * @description
+ * Fetches session and subsession details from the database and retrieves feedback for
+ * the session and its subsessions. Organizes feedback into a structured format for presentation.
  *
- * @param {string} id - The session ID.
+ * @param {string} id - The unique identifier of the session.
  * @param {object} link - The database connection object.
- * @returns {object} - The session details and feedback as a JSON object.
- * @throws {Error} - Throws an error if the feedback cannot be retrieved.
+ * @returns {object} - An object containing session details, feedback, and organized responses.
+ * @throws {Error} - Throws an error if retrieving feedback or session data fails.
  */
 async function viewFeedback(id, link) {
   try {
-    // Retrieve session details from the database
     const loadUpdateSessionRoute = require("./loadUpdateSession");
     const session = await loadUpdateSessionRoute.selectSessionDetails(link, id);
 
-    // Extract subsession IDs from the session
     const subsessionIDs = session.subsessions;
-
-    // Retrieve details for each subsession
     session.subsessions = await loadUpdateSessionRoute.selectSubsessionDetails(
       link,
       subsessionIDs
     );
 
-    // Remove non-required properties from the organiser data
     session.organisers = session.organisers.map(
-      ({ pinHash, salt, lastSent, email, notifications, ...rest }) => rest // Destructure and retain only the needed properties
+      ({ pinHash, salt, lastSent, email, notifications, ...rest }) => rest
     );
 
     session.feedback = await selectFeedbackFromDatabase(id, link);
-
-    //Format the session date to ISO format
     session.date = dateUtilities.formatDateUK(session.date);
-    /*
-  // Decode HTML entities in name and title
-  res.name = decodeHtmlEntities(res.name);
-  res.title = decodeHtmlEntities(res.title);
-
-*/
 
     for (let subsession of session.subsessions) {
       subsession.feedback = await selectFeedbackFromDatabase(
@@ -60,7 +56,6 @@ async function viewFeedback(id, link) {
       );
     }
 
-    // Organize question feedback and update the result
     session.questions = organiseQuestionFeedback(
       session.questions,
       session.feedback.questionFeedback
@@ -69,31 +64,37 @@ async function viewFeedback(id, link) {
 
     return session;
   } catch (error) {
-    throw error;
+    throw new Error(`Error in viewFeedback: ${error.message}`);
   }
 }
 
 /**
  * @function selectFeedbackFromDatabase
- * @summary Retrieves the session feedback for a specific session ID.
+ * @memberof module:feedback
+ * @summary Retrieves feedback for a specific session ID from the database.
+ * @description
+ * Fetches all feedback entries associated with the given session ID from the database,
+ * including positive and negative feedback, question responses, and session scores.
+ * Returns the data in a structured format.
  *
- * @param {string} id - The session ID.
+ * @param {string} id - The unique identifier of the session.
  * @param {object} link - The database connection object.
- * @returns {object} - The session feedback data including positive/negative feedback, score, and questions.
- * @throws {Error} - Throws an error if database connection, query preparation, or execution fails.
+ * @returns {object} - An object containing feedback data:
+ * - `positive`: Array of positive feedback comments.
+ * - `negative`: Array of negative feedback comments.
+ * - `questionFeedback`: Array of responses to session questions.
+ * - `score`: Array of session scores.
+ * @throws {Error} - Throws an error if database connection or query execution fails.
  */
 async function selectFeedbackFromDatabase(id, link) {
-  // Check if the database link (connection) is valid
   if (!link) throw new Error("Database connection failed.");
 
   try {
-    // Prepare SQL query to fetch feedback for the given session ID
     const [result] = await link.execute(
       `SELECT * FROM ${config.feedback.tables.tblSubmissions} WHERE id = ?`,
-      [id] // Session ID is passed as a parameter
+      [id]
     );
 
-    // Initialize the response object with empty arrays
     const feedback = {
       positive: [],
       negative: [],
@@ -101,7 +102,6 @@ async function selectFeedbackFromDatabase(id, link) {
       score: [],
     };
 
-    // If feedback exists for the session ID, process it
     if (result.length > 0) {
       result.forEach((row) => {
         feedback.positive.push(row.positive);
@@ -110,7 +110,6 @@ async function selectFeedbackFromDatabase(id, link) {
         feedback.score.push(row.score);
       });
     } else {
-      // If no feedback exists, push default "No feedback found" values
       feedback.positive.push("No feedback found.");
       feedback.negative.push("No feedback found.");
       feedback.questionFeedback.push("No feedback found.");
@@ -119,45 +118,44 @@ async function selectFeedbackFromDatabase(id, link) {
 
     return feedback;
   } catch (error) {
-    throw error;
+    throw new Error(`Error retrieving feedback: ${error.message}`);
   }
 }
 
 /**
  * @function organiseQuestionFeedback
- * @summary Organizes the feedback responses for each question.
+ * @memberof module:feedback
+ * @summary Organizes feedback responses for session questions.
+ * @description
+ * Processes and organizes feedback responses for each session question. Supports text-type
+ * questions (adding responses) and option-based questions (counting selections).
  *
- * @param {Array} questions - The list of questions to organize feedback for.
- * @param {Array} questionFeedback - The list of feedback responses to process.
- * @returns {Array} - The updated questions array with organized responses.
+ * @param {Array} questions - The list of questions associated with the session.
+ * @param {Array} questionFeedback - The feedback responses for the questions.
+ * @returns {Array} - The updated questions array with organized feedback.
  */
 function organiseQuestionFeedback(questions, questionFeedback) {
-  // Initialize the responses and counts for each question and option
   questions.forEach((question) => {
-    question.responses = []; // Empty array for storing responses for each question
+    question.responses = [];
     question.options.forEach((option) => {
-      option.count = 0; // Reset the count for each option
+      option.count = 0;
     });
   });
 
-  // Iterate over each set of feedback responses
   questionFeedback.forEach((responseSet) => {
-    if (typeof responseSet != "object") return; //don't try to organise when no feedback found
+    if (typeof responseSet !== "object") return;
     responseSet.forEach((response) => {
-      // Find the matching question for each response
       questions.forEach((question) => {
         if (response.title === question.title) {
-          // Handle text-type questions by directly adding responses
           if (question.type === "text") {
             question.responses.push(response.response);
           } else {
-            // Handle checkbox and select-type questions by counting responses for each option
             question.options.forEach((option) => {
               if (question.type === "checkbox") {
                 const responseOption = response.options.find(
                   (opt) => opt.title === option.title
                 );
-                if (responseOption.selected) option.count++;
+                if (responseOption?.selected) option.count++;
               }
               if (
                 question.type === "select" &&
@@ -172,7 +170,7 @@ function organiseQuestionFeedback(questions, questionFeedback) {
     });
   });
 
-  return questions; // Return the updated questions with feedback organized
+  return questions;
 }
 
-module.exports = { viewFeedback };
+module.exports = { viewFeedback, selectFeedbackFromDatabase };
