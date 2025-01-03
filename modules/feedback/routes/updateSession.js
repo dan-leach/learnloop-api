@@ -15,6 +15,7 @@
  * @requires ../../utilities/pinUtilities - For generating new pins.
  * @requires ../../utilities/mailUtilities - For sending notification emails.
  * @requires ../../utilities/dateUtilities - Utilities for formatting date objects into various string representations.
+ * @requires entities For decoding html entities
  *
  * @exports updateSession Core function for the module
  * @exports getOldSessionDetails Used by closeSession route
@@ -27,6 +28,7 @@ const insertSessionRoute = require("./insertSession");
 const pinUtilities = require("../../utilities/pinUtilities");
 const mailUtilities = require("../../utilities/mailUtilities");
 const dateUtilities = require("../../utilities/dateUtilities");
+const { decode } = require("entities");
 
 // Define application URLs
 const appURL = config.client.url;
@@ -658,7 +660,7 @@ const emailOrganiserUpdate = async (
   const body = mailBodyBuilder(data, user, recipient, seriesData);
 
   // Construct the email subject line
-  const subject = `${heading}: ${data.title}`;
+  const subject = `${heading}: ${decode(data.title)}`;
 
   // Create the HTML structure for the email using the mail utilities
   const html = mailUtilities.buildMailHTML(

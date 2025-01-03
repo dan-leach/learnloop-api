@@ -11,6 +11,7 @@
  * @requires path - For resolving file paths.
  * @requires ../../../config.json - Configuration settings for the application (including URLs).
  * @requires ../../utilities/dateUtilities - Utility functions for date formatting.
+ * @requires entities For decoding html entities
  *
  * @exports fetchCertificate - The core module function that generates and serves the PDF certificate.
  */
@@ -19,6 +20,7 @@ const PDFDocument = require("pdfkit");
 const path = require("path");
 const config = require("../../../config.json");
 const dateUtilities = require("../../utilities/dateUtilities");
+const { decode } = require("entities");
 
 /**
  * @async
@@ -49,7 +51,7 @@ const fetchCertificate = async (sessionDetails, attendee, res) => {
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename=${sessionDetails.title}_certificate.pdf`
+      `attachment; filename=${decode(sessionDetails.title)}_certificate.pdf`
     );
 
     // Pipe the PDF into the response
@@ -89,16 +91,16 @@ const fetchCertificate = async (sessionDetails, attendee, res) => {
     doc
       .fontSize(30)
       .font("Helvetica-Bold")
-      .text(attendee.name, { align: "center" })
+      .text(decode(attendee.name), { align: "center" })
       .moveDown(0.7);
 
     doc
       .fontSize(20)
       .font("Helvetica")
       .text(
-        `attended '${sessionDetails.title}' ${
+        `attended '${decode(sessionDetails.title)}' ${
           sessionDetails.subsessions.length ? "organised by" : "facilitated by"
-        } ${sessionDetails.name}`,
+        } ${decode(sessionDetails.name)}`,
         {
           align: "center",
         }
@@ -116,9 +118,14 @@ const fetchCertificate = async (sessionDetails, attendee, res) => {
       for (const subsession of sessionDetails.subsessions) {
         doc
           .fontSize(16)
-          .text(`'${subsession.title}' by ${subsession.organisers[0].name}`, {
-            align: "center",
-          })
+          .text(
+            `'${decode(subsession.title)}' by ${decode(
+              subsession.organisers[0].name
+            )}`,
+            {
+              align: "center",
+            }
+          )
           .moveDown(0.3);
       }
     }

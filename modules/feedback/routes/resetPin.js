@@ -1,5 +1,3 @@
-const config = require("../../../config.json");
-
 /**
  * @module resetPin
  * @summary Module for resetting organiser PINs and sending email notifications.
@@ -11,10 +9,14 @@ const config = require("../../../config.json");
  * @requires ../../../config.json - Application configuration, including database table settings.
  * @requires ../../utilities/pinUtilities - Utility functions for PIN creation and hashing.
  * @requires ../../utilities/mailUtilities - Utility functions for building and sending emails.
+ * @requires entities For decoding html entities
  *
  * @exports resetPin - Core function to reset an organiser's PIN.
  * @exports updateOrganiserDetailsInDatabase - Updates organiser details in the database.
  */
+
+const config = require("../../../config.json");
+const { decode } = require("entities");
 
 /**
  * @async
@@ -123,7 +125,7 @@ const emailPinReset = async (session, pin, name, email) => {
   const shortenedAppURL = appURL.replace("https://", "");
 
   const body = buildMailBody(name, appURL, session, pin);
-  const subject = `Pin Reset: ${session.title}`;
+  const subject = `Pin Reset: ${decode(session.title)}`;
   const heading = `Pin Reset`;
 
   const mailUtilities = require("../../utilities/mailUtilities");

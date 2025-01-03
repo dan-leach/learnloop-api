@@ -17,6 +17,7 @@
  * @requires ../../utilities/pinUtilities - Utility functions for PIN generation and hashing.
  * @requires ../../utilities/mailUtilities - Utilities for sending email notifications.
  * @requires ../../utilities/dateUtilities - Utilities for formatting date objects.
+ * @requires entities For decoding html entities
  *
  * @exports insertSession - Function for inserting a new session into the database and notifying organisers.
  * @exports emailOrganiserInsert - Function to send email notifications to organisers regarding created feedback sessions.
@@ -27,6 +28,7 @@ const idUtilities = require("../../utilities/idUtilities");
 const pinUtilities = require("../../utilities/pinUtilities");
 const mailUtilities = require("../../utilities/mailUtilities");
 const dateUtilities = require("../../utilities/dateUtilities");
+const { decode } = require("entities");
 
 /**
  * @async
@@ -70,9 +72,8 @@ const insertSession = async (
         leadPin = pin; // Store the lead organiser's PIN to be returned to the client
         data.leadName = organiser.name; // Store lead organiser's name for email notifications
       }
-      const salt = pinUtilities.createSalt();
-      organiser.pinHash = pinUtilities.hashPin(pin, salt); // Hash the PIN
-      organiser.salt = salt; // Store the salt for future verification
+      organiser.salt = pinUtilities.createSalt();
+      organiser.pinHash = pinUtilities.hashPin(pin, organiser.salt); // Hash the PIN
       organiser.lastSent = null; // Initial value for last sent notification
       organiser.notifications = true; // Enable notifications
 
@@ -101,6 +102,8 @@ const insertSession = async (
 
   if (isSubsession) {
     // If this is a subsession, inherit data from the parent series
+    const pin = pinUtilities.createPin();
+    const salt = pinUtilities.createSalt();
     Object.assign(data, {
       date: "0000-00-00",
       multipleDates: false,
@@ -113,11 +116,8 @@ const insertSession = async (
           email: data.email,
           isLead: false,
           canEdit: false,
-          pinHash: pinUtilities.hashPin(
-            pinUtilities.createPin(),
-            pinUtilities.createSalt()
-          ),
-          salt: pinUtilities.createSalt(),
+          pinHash: pinUtilities.hashPin(pin, salt),
+          salt: salt,
           notifications: true,
           lastSent: null,
         },
@@ -129,7 +129,7 @@ const insertSession = async (
       mails.push({
         name: data.name,
         email: data.email,
-        pin: pinUtilities.createPin(), // Generate a new PIN for the subsession
+        pin: pin, // Generate a new PIN for the subsession
         isLead: data.organisers[0].isLead,
         canEdit: data.organisers[0].canEdit,
       });
@@ -218,7 +218,7 @@ const emailOrganiserInsert = async (
   );
 
   const heading = "Feedback request created";
-  const subject = `${heading}: ${data.title}`;
+  const subject = `${heading}: ${decode(data.title)}`;
   const html = mailUtilities.buildMailHTML(
     subject,
     heading,

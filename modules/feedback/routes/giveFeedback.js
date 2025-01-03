@@ -10,12 +10,14 @@
  * @requires ../../../config.json - Configuration settings for the application.
  * @requires ../../utilities/mailUtilities - Utilities for sending email notifications.
  * @requires ../../utilities/dateUtilities - Utilities for formatting date objects.
+ * @requires entities For decoding html entities
  *
  * @exports giveFeedback - Function for inserting feedback submissions and notifying organisers.
  */
 
 const config = require("../../../config.json");
 const mailUtilities = require("../../utilities/mailUtilities");
+const { decode } = require("entities");
 
 /**
  * @async
@@ -149,7 +151,7 @@ const emailOrganiserNotification = async (
   const body = buildMailBody(name, appURL, shortenedAppURL, data, seriesData);
 
   const heading = `Feedback notification`;
-  const subject = `${heading}: ${data.title}`;
+  const subject = `${heading}: ${decode(data.title)}`;
 
   const html = mailUtilities.buildMailHTML(
     subject,

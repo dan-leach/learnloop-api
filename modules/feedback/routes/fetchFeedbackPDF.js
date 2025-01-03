@@ -140,9 +140,10 @@ const fetchFeedbackPDF = async (id, res, link) => {
     }
 
     // Add overall feedback score
-    const averageScore = (
+    let averageScore = (
       feedback.score.reduce((sum, num) => sum + num, 0) / feedback.score.length
     ).toFixed(1);
+    if (isNaN(averageScore)) averageScore = "-";
     doc
       .moveDown(1)
       .fontSize(20)
@@ -174,10 +175,11 @@ const fetchFeedbackPDF = async (id, res, link) => {
             .moveDown(0.3);
         }
 
-        const subsessionScore = (
+        let subsessionScore = (
           subsession.feedback.score.reduce((sum, num) => sum + num, 0) /
           subsession.feedback.score.length
         ).toFixed(1);
+        if (isNaN(subsessionScore)) subsessionScore = "-";
         doc
           .moveDown(1)
           .fontSize(14)
