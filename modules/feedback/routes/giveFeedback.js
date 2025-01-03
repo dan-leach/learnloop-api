@@ -68,6 +68,7 @@ const giveFeedback = async (link, data, session) => {
       }
     }
   }
+  updateLastSentInDatabase(link, session.id, organisers);
 
   for (let subsessionFeedback of data.subsessions) {
     // Validate the subsession as part of the session series
@@ -98,15 +99,21 @@ const giveFeedback = async (link, data, session) => {
 
     for (let subsessionOrganiser of subsessionOrganisers) {
       if (subsessionOrganiser.notifications && subsessionOrganiser.email) {
-        mails.push({
-          name: subsessionOrganiser.name,
-          email: subsessionOrganiser.email,
-          isLead: false,
-          session: subsession,
-          seriesData: session,
-        });
+        if (currentTime - subsessionOrganiser.lastSent > notificationTimeout) {
+          // Check organiser hasn't received another notification email within last 2 hours
+          mails.push({
+            name: subsessionOrganiser.name,
+            email: subsessionOrganiser.email,
+            isLead: false,
+            session: subsession,
+            seriesData: session,
+          });
+
+          subsessionOrganiser.lastSent = currentTime;
+        }
       }
     }
+    updateLastSentInDatabase(link, subsessionFeedback.id, subsessionOrganisers);
   }
 
   for (let mail of mails) {
@@ -270,7 +277,7 @@ const updateLastSentInDatabase = async (link, id, organisers) => {
       SET organisers = ? 
       WHERE id = ?`;
 
-    await link.execute(query, [organisersData, id]);
+    await link.execute(query, [organisers, id]);
 
     return true;
   } catch (error) {
