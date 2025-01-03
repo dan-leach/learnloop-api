@@ -36,6 +36,16 @@ const loadGiveFeedback = async (link, id) => {
   // Fetch the main session details
   const session = await loadUpdateSessionRoute.selectSessionDetails(link, id);
 
+  // Check not accessing a subsession directly
+  if (session.isSubsession) {
+    throw Object.assign(
+      new Error(
+        "Please use the session series code to submit feedback (cannot submit direct to subsession)"
+      ),
+      { statusCode: 400 }
+    );
+  }
+
   // Format the session date to ISO format
   session.date = dateUtilities.formatDateISO(session.date);
 

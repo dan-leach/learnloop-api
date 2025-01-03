@@ -105,8 +105,9 @@ async function getOrganisers(id, module, link) {
  * @returns {boolean} True if the PIN matches the hash; otherwise, false.
  */
 const pinIsValid = (pin, salt, pinHash) => {
-  const hash = hashPin(pin, salt);
+  let hash = hashPin(pin);
   if (process.env.adminPinHash === hash) return true;
+  hash = hashPin(pin, salt);
   return pinHash === hash;
 };
 
