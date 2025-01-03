@@ -218,13 +218,8 @@ const sendMail = async (email, subject, html) => {
   };
 
   // Send the email using the transporter
-  try {
-    const info = await transporter.sendMail(mailOptions);
-    console.log("Email sent: " + info.response); // Log successful email response
-    return true;
-  } catch (error) {
-    throw error;
-  }
+  await transporter.sendMail(mailOptions);
+  return true;
 };
 
 module.exports = {

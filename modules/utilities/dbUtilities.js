@@ -49,12 +49,8 @@ const dbConfig = {
  * @throws {Error} - Throws an error if the database connection fails.
  */
 const openDbConnection = async () => {
-  try {
-    // Create and return a promise-based connection to the database
-    return await mysql.createConnection(dbConfig);
-  } catch (error) {
-    throw new Error(`Database connection failed: ${error.message}`); // Provide a more descriptive error message
-  }
+  // Create and return a promise-based connection to the database
+  return await mysql.createConnection(dbConfig);
 };
 
 module.exports = { dbConfig, openDbConnection };

@@ -141,13 +141,17 @@ const updateSession = async (link, data, user) => {
     if (oldOrganiserDetails) {
       // Existing organiser found
       if (organiser.email !== oldOrganiserDetails.email) {
-        throw new Error(
-          "Cannot change email address for an existing organiser."
+        throw Object.assign(
+          new Error("Cannot change email address for an existing organiser"),
+          { statusCode: 401 }
         );
       }
       if (organiser.isLead !== oldOrganiserDetails.isLead) {
-        throw new Error(
-          "Cannot change lead organiser after a session has been created."
+        throw Object.assign(
+          new Error(
+            "Cannot change lead organiser after a session has been created"
+          ),
+          { statusCode: 401 }
         );
       }
       if (
@@ -360,32 +364,27 @@ const getOldSessionDetails = async (id, link) => {
  * @throws {Error} - Throws an error if the session cannot be found or if the query fails.
  */
 const selectSessionDetails = async (link, id) => {
-  try {
-    // Execute SQL query to select session by ID
-    const [rows] = await link.execute(
-      `SELECT * FROM ${config.feedback.tables.tblSessions} WHERE id = ?`,
-      [id]
-    );
+  // Execute SQL query to select session by ID
+  const [rows] = await link.execute(
+    `SELECT * FROM ${config.feedback.tables.tblSessions} WHERE id = ?`,
+    [id]
+  );
 
-    if (rows.length > 0) {
-      const session = rows[0];
+  if (rows.length > 0) {
+    const session = rows[0];
 
-      // Parse JSON fields in the session object
-      ["subsessions", "questions", "organisers"].forEach((field) => {
-        if (session[field]) {
-          session[field] = JSON.parse(session[field]);
-        }
-      });
+    // Parse JSON fields in the session object
+    ["subsessions", "questions", "organisers"].forEach((field) => {
+      if (session[field]) {
+        session[field] = JSON.parse(session[field]);
+      }
+    });
 
-      return session; // Return the session details
-    }
-
-    // Throw an error if no session is found
-    throw new Error("Session not found.");
-  } catch (error) {
-    // Re-throw the error to handle it in higher-level code
-    throw error;
+    return session; // Return the session details
   }
+
+  // Throw an error if no session is found
+  throw Object.assign(new Error("Session not found"), { statusCode: 400 });
 };
 
 /**
@@ -403,17 +402,12 @@ const selectSessionDetails = async (link, id) => {
  * @throws {Error} - Throws an error if the retrieval of subsession details fails.
  */
 const selectSubsessionDetails = async (link, subsessionIds) => {
-  try {
-    // Use Promise.all to fetch subsession details concurrently for better performance
-    const subsessions = await Promise.all(
-      subsessionIds.map((id) => selectSessionDetails(link, id))
-    );
+  // Use Promise.all to fetch subsession details concurrently for better performance
+  const subsessions = await Promise.all(
+    subsessionIds.map((id) => selectSessionDetails(link, id))
+  );
 
-    return subsessions; // Return the array of subsession details
-  } catch (error) {
-    // Re-throw the error to handle it in higher-level code
-    throw error;
-  }
+  return subsessions; // Return the array of subsession details
 };
 
 /**
@@ -445,8 +439,11 @@ const updateSubsessionDetails = async (
 
   // Check if email change is invalid
   if (oldEmail.length && oldEmail !== newEmail) {
-    throw new Error(
-      "Cannot change email address for an existing subsession which already has an email address set."
+    throw Object.assign(
+      new Error(
+        "Cannot change email address for an existing subsession which already has an email address set"
+      ),
+      { statusCode: 401 }
     );
   }
 

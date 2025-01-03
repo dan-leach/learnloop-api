@@ -41,24 +41,20 @@ const insertAttendance = async (link, data) => {
     throw new Error("Database connection failed.");
   }
 
-  try {
-    // Construct SQL query for inserting attendance data
-    const query = `INSERT INTO ${config.feedback.tables.tblAttendance} 
+  // Construct SQL query for inserting attendance data
+  const query = `INSERT INTO ${config.feedback.tables.tblAttendance} 
       (id, name, region, organisation) 
       VALUES (?, ?, ?, ?)`;
 
-    // Execute the insert query with attendance data
-    await link.execute(query, [
-      data.id,
-      data.attendee.name,
-      data.attendee.region,
-      data.attendee.organisation,
-    ]);
+  // Execute the insert query with attendance data
+  await link.execute(query, [
+    data.id,
+    data.attendee.name,
+    data.attendee.region,
+    data.attendee.organisation,
+  ]);
 
-    return true; // Return true upon successful insertion
-  } catch (error) {
-    throw error; // Rethrow error for higher-level handling
-  }
+  return true; // Return true upon successful insertion
 };
 
 module.exports = { insertAttendance };

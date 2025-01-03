@@ -75,23 +75,18 @@ async function findMySessions(email, link) {
  */
 async function selectSessionsByEmail(email, link) {
   if (!link) {
-    throw new Error("Database connection failed."); // Error if connection is not valid
+    throw new Error("Database connection failed");
   }
+  // Query the database for sessions where the email appears in the `organisers` column
+  const [rows] = await link.execute(
+    `SELECT * FROM ${config.feedback.tables.tblSessions} WHERE organisers LIKE ?`,
+    [`%${email}%`]
+  );
 
-  try {
-    // Query the database for sessions where the email appears in the `organisers` column
-    const [rows] = await link.execute(
-      `SELECT * FROM ${config.feedback.tables.tblSessions} WHERE organisers LIKE ?`,
-      [`%${email}%`]
-    );
+  // Parse the organisers field in each row as JSON
+  rows.forEach((row) => (row.organisers = JSON.parse(row.organisers)));
 
-    // Parse the organisers field in each row as JSON
-    rows.forEach((row) => (row.organisers = JSON.parse(row.organisers)));
-
-    return rows;
-  } catch (error) {
-    throw error;
-  }
+  return rows;
 }
 
 /**

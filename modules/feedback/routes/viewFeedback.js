@@ -32,40 +32,33 @@ const dateUtilities = require("../../utilities/dateUtilities");
  * @throws {Error} - Throws an error if retrieving feedback or session data fails.
  */
 async function viewFeedback(id, link) {
-  try {
-    const loadUpdateSessionRoute = require("./loadUpdateSession");
-    const session = await loadUpdateSessionRoute.selectSessionDetails(link, id);
+  const loadUpdateSessionRoute = require("./loadUpdateSession");
+  const session = await loadUpdateSessionRoute.selectSessionDetails(link, id);
 
-    const subsessionIDs = session.subsessions;
-    session.subsessions = await loadUpdateSessionRoute.selectSubsessionDetails(
-      link,
-      subsessionIDs
-    );
+  const subsessionIDs = session.subsessions;
+  session.subsessions = await loadUpdateSessionRoute.selectSubsessionDetails(
+    link,
+    subsessionIDs
+  );
 
-    session.organisers = session.organisers.map(
-      ({ pinHash, salt, lastSent, email, notifications, ...rest }) => rest
-    );
+  session.organisers = session.organisers.map(
+    ({ pinHash, salt, lastSent, email, notifications, ...rest }) => rest
+  );
 
-    session.feedback = await selectFeedbackFromDatabase(id, link);
-    session.date = dateUtilities.formatDateUK(session.date);
+  session.feedback = await selectFeedbackFromDatabase(id, link);
+  session.date = dateUtilities.formatDateUK(session.date);
 
-    for (let subsession of session.subsessions) {
-      subsession.feedback = await selectFeedbackFromDatabase(
-        subsession.id,
-        link
-      );
-    }
-
-    session.questions = organiseQuestionFeedback(
-      session.questions,
-      session.feedback.questionFeedback
-    );
-    delete session.feedback.questionFeedback;
-
-    return session;
-  } catch (error) {
-    throw new Error(`Error in viewFeedback: ${error.message}`);
+  for (let subsession of session.subsessions) {
+    subsession.feedback = await selectFeedbackFromDatabase(subsession.id, link);
   }
+
+  session.questions = organiseQuestionFeedback(
+    session.questions,
+    session.feedback.questionFeedback
+  );
+  delete session.feedback.questionFeedback;
+
+  return session;
 }
 
 /**
@@ -89,37 +82,33 @@ async function viewFeedback(id, link) {
 async function selectFeedbackFromDatabase(id, link) {
   if (!link) throw new Error("Database connection failed.");
 
-  try {
-    const [result] = await link.execute(
-      `SELECT * FROM ${config.feedback.tables.tblSubmissions} WHERE id = ?`,
-      [id]
-    );
+  const [result] = await link.execute(
+    `SELECT * FROM ${config.feedback.tables.tblSubmissions} WHERE id = ?`,
+    [id]
+  );
 
-    const feedback = {
-      positive: [],
-      negative: [],
-      questionFeedback: [],
-      score: [],
-    };
+  const feedback = {
+    positive: [],
+    negative: [],
+    questionFeedback: [],
+    score: [],
+  };
 
-    if (result.length > 0) {
-      result.forEach((row) => {
-        feedback.positive.push(row.positive);
-        feedback.negative.push(row.negative);
-        feedback.questionFeedback.push(JSON.parse(row.questions));
-        feedback.score.push(row.score);
-      });
-    } else {
-      feedback.positive.push("No feedback found.");
-      feedback.negative.push("No feedback found.");
-      feedback.questionFeedback.push("No feedback found.");
-      feedback.score.push("No feedback found.");
-    }
-
-    return feedback;
-  } catch (error) {
-    throw new Error(`Error retrieving feedback: ${error.message}`);
+  if (result.length > 0) {
+    result.forEach((row) => {
+      feedback.positive.push(row.positive);
+      feedback.negative.push(row.negative);
+      feedback.questionFeedback.push(JSON.parse(row.questions));
+      feedback.score.push(row.score);
+    });
+  } else {
+    feedback.positive.push("No feedback found.");
+    feedback.negative.push("No feedback found.");
+    feedback.questionFeedback.push("No feedback found.");
+    feedback.score.push("No feedback found.");
   }
+
+  return feedback;
 }
 
 /**

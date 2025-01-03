@@ -262,7 +262,7 @@ const insertSessionIntoDatabase = async (
   isSubsession
 ) => {
   if (!link) {
-    throw new Error("Database connection failed.");
+    throw new Error("Database connection failed");
   }
 
   const query = `INSERT INTO ${config.feedback.tables.tblSessions} 

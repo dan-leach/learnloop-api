@@ -30,23 +30,19 @@ const dateUtilities = require("../../utilities/dateUtilities");
  * @throws {Error} - Throws an error if retrieving session details or attendance data fails.
  */
 async function viewAttendance(id, link) {
-  try {
-    const loadUpdateSessionRoute = require("./loadUpdateSession");
-    const session = await loadUpdateSessionRoute.selectSessionDetails(link, id);
+  const loadUpdateSessionRoute = require("./loadUpdateSession");
+  const session = await loadUpdateSessionRoute.selectSessionDetails(link, id);
 
-    delete session.organisers;
-    delete session.questions;
-    delete session.subsessions;
+  delete session.organisers;
+  delete session.questions;
+  delete session.subsessions;
 
-    session.attendance = await selectAttendanceFromDatabase(id, link);
-    session.attendance = organiseAttendance(session.attendance);
+  session.attendance = await selectAttendanceFromDatabase(id, link);
+  session.attendance = organiseAttendance(session.attendance);
 
-    session.date = dateUtilities.formatDateUK(session.date);
+  session.date = dateUtilities.formatDateUK(session.date);
 
-    return session;
-  } catch (error) {
-    throw new Error(`Error in viewAttendance: ${error.message}`);
-  }
+  return session;
 }
 
 /**
@@ -65,22 +61,21 @@ async function viewAttendance(id, link) {
 async function selectAttendanceFromDatabase(id, link) {
   if (!link) throw new Error("Database connection failed.");
 
-  try {
-    const [result] = await link.execute(
-      `SELECT name, region, organisation FROM ${config.feedback.tables.tblAttendance} WHERE id = ? ORDER BY region, organisation, name`,
-      [id]
+  const [result] = await link.execute(
+    `SELECT name, region, organisation FROM ${config.feedback.tables.tblAttendance} WHERE id = ? ORDER BY region, organisation, name`,
+    [id]
+  );
+
+  if (result.length < 3) {
+    throw Object.assign(
+      new Error(
+        "Cannot view attendance where fewer than 3 attendees exist to protect feedback anonymity"
+      ),
+      { statusCode: 401 }
     );
-
-    if (result.length < 3) {
-      throw new Error(
-        "Cannot view attendance where fewer than 3 attendees exist to protect feedback anonymity."
-      );
-    }
-
-    return result;
-  } catch (error) {
-    throw new Error(`Error retrieving attendance: ${error.message}`);
   }
+
+  return result;
 }
 
 /**

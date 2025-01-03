@@ -197,23 +197,19 @@ const insertFeedbackIntoDatabase = async (link, id, feedback, questions) => {
     throw new Error("Database connection failed.");
   }
 
-  try {
-    const query = `INSERT INTO ${config.feedback.tables.tblSubmissions} 
+  const query = `INSERT INTO ${config.feedback.tables.tblSubmissions} 
       (id, positive, negative, questions, score) 
       VALUES (?, ?, ?, ?, ?)`;
 
-    await link.execute(query, [
-      id,
-      feedback.positive,
-      feedback.negative,
-      questions,
-      feedback.score,
-    ]);
+  await link.execute(query, [
+    id,
+    feedback.positive,
+    feedback.negative,
+    questions,
+    feedback.score,
+  ]);
 
-    return true;
-  } catch (error) {
-    throw error;
-  }
+  return true;
 };
 
 /**
@@ -268,21 +264,14 @@ const updateLastSentInDatabase = async (link, id, organisers) => {
     throw new Error("Database connection failed.");
   }
 
-  try {
-    // Serialize the organisers object if necessary
-    //const organisers = JSON.stringify(organisers); // Assuming 'organisers' is an object or array
-
-    // Update the session with the new organisers data
-    const query = `UPDATE ${config.feedback.tables.tblSessions} 
+  // Update the session with the new organisers data
+  const query = `UPDATE ${config.feedback.tables.tblSessions} 
       SET organisers = ? 
       WHERE id = ?`;
 
-    await link.execute(query, [organisers, id]);
+  await link.execute(query, [organisers, id]);
 
-    return true;
-  } catch (error) {
-    throw error;
-  }
+  return true;
 };
 
 module.exports = { giveFeedback };

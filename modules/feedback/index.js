@@ -12,9 +12,9 @@
  * @requires express
  * @requires router
  * @requires express-validator
- * @requires entities For decoding html entities
  * @requires ./validate Rulesets and validation function for each route
  * @requires ../utilities/dbUtilities Database link configuration and function for opening connection
+ * @requires ../utilities/routeUtilities Error handling and decoding html entities
  *
  * @exports router Object containing the different routes available in the feedback module
  */
@@ -24,35 +24,10 @@ const router = express.Router();
 const { matchedData } = require("express-validator");
 const validate = require("./validate");
 const { dbConfig, openDbConnection } = require("../utilities/dbUtilities");
-const { decode } = require("entities");
-
-/**
- * @function decodeObjectStrings
- * @memberof module:feedback
- * @summary Recursively decodes html strings within an object
- *
- * @param {object} obj the object containing strings to be decoded
- * @returns {object} the object with decoded strings
- */
-function decodeObjectStrings(obj) {
-  if (typeof obj === "string") {
-    return decode(obj);
-  } else if (Array.isArray(obj)) {
-    return obj.map(decodeObjectStrings);
-  } else if (typeof obj === "object" && obj !== null) {
-    const decodedObj = {};
-    for (const key in obj) {
-      if (obj.hasOwnProperty(key)) {
-        if (key != "date") {
-          //don't decode date as returns NaN
-          decodedObj[key] = decodeObjectStrings(obj[key]);
-        }
-      }
-    }
-    return decodedObj;
-  }
-  return obj; // Return non-string, non-object values as is
-}
+const {
+  decodeObjectStrings,
+  handleError,
+} = require("../utilities/routeUtilities");
 
 /**
  * @async
@@ -83,22 +58,20 @@ router.post(
       // Open a connection to the database
       link = await openDbConnection(dbConfig);
 
-      // Import the function to insert the session into the database
-      const { insertSession } = require("./routes/insertSession");
-
       // Insert session into the database and get the session ID and lead pin
+      const { insertSession } = require("./routes/insertSession");
       const { id, leadPin, sendMailFails } = await insertSession(link, data);
 
       // Respond with the session ID and lead organiser pin
       res.json({ id, leadPin, sendMailFails });
     } catch (error) {
-      // Log the error with a timestamp for debugging
-      console.error(new Date().toISOString(), "insertSession error:", error);
-
-      // Send a 500 response with the error message
-      res.status(500).json({
-        errors: [{ msg: "Failed to create session: " + error.message }],
-      });
+      handleError(
+        error,
+        error.statusCode,
+        "feedback/insertSession",
+        "Failed to create session",
+        res
+      );
     } finally {
       // Close the database connection if it was opened
       if (link) await link.end();
@@ -201,17 +174,13 @@ router.post(
       session = decodeObjectStrings(session);
       res.json(session);
     } catch (error) {
-      // Log the error with a timestamp for debugging
-      console.error(
-        new Date().toISOString(),
-        "loadUpdateSession error:",
-        error
+      handleError(
+        error,
+        error.statusCode,
+        "feedback/loadUpdateSession",
+        "Failed to load session details",
+        res
       );
-
-      // Send a 500 response with the error message
-      res.status(500).json({
-        errors: [{ msg: "Failed to load session details: " + error.message }],
-      });
     } finally {
       // Close the database connection if it was opened
       if (link) await link.end();
@@ -305,13 +274,13 @@ router.post(
       // Respond with a success message
       res.json({ message: "The session was updated.", sendMailFails });
     } catch (error) {
-      // Log the error with a timestamp for debugging
-      console.error(new Date().toISOString(), "updateSession error:", error);
-
-      // Send a 500 response with the error message
-      res.status(500).json({
-        errors: [{ msg: "Failed to update session: " + error.message }],
-      });
+      handleError(
+        error,
+        error.statusCode,
+        "feedback/updateSession",
+        "Failed to update session",
+        res
+      );
     } finally {
       // Close the database connection if it was opened
       if (link) await link.end();
@@ -404,13 +373,13 @@ router.post(
       // Respond with a success message
       res.json({ message: "The session was closed.", sendMailFails });
     } catch (error) {
-      // Log the error with a timestamp for debugging
-      console.error(new Date().toISOString(), "closeSession error:", error);
-
-      // Send a 500 response with the error message
-      res.status(500).json({
-        errors: [{ msg: "Failed to close session: " + error.message }],
-      });
+      handleError(
+        error,
+        error.statusCode,
+        "feedback/closeSession",
+        "Failed to close session",
+        res
+      );
     } finally {
       // Close the database connection if it was opened
       if (link) await link.end();
@@ -468,13 +437,13 @@ router.post(
         sendMailFails,
       });
     } catch (error) {
-      // Log the error with a timestamp for debugging
-      console.error(new Date().toISOString(), "resetPin error:", error);
-
-      // Send a 500 response with the error message
-      res.status(500).json({
-        errors: [{ msg: "Failed to reset pin: " + error.message }],
-      });
+      handleError(
+        error,
+        error.statusCode,
+        "feedback/resetPin",
+        "Failed to reset pin",
+        res
+      );
     } finally {
       // Close the database connection if it was opened
       if (link) await link.end();
@@ -554,21 +523,13 @@ router.post(
         sendMailFails,
       });
     } catch (error) {
-      // Log the error with a timestamp for debugging
-      console.error(
-        new Date().toISOString(),
-        "updateNotificationPreferences error:",
-        error
+      handleError(
+        error,
+        error.statusCode,
+        "feedback/updateNotificationPreferences",
+        "Failed to update notification preferences",
+        res
       );
-
-      // Send a 500 response with the error message
-      res.status(500).json({
-        errors: [
-          {
-            msg: "Failed to update notification preferences: " + error.message,
-          },
-        ],
-      });
     } finally {
       // Close the database connection if it was opened
       if (link) await link.end();
@@ -621,17 +582,13 @@ router.post(
         sendMailFails,
       });
     } catch (error) {
-      // Log the error with a timestamp for debugging
-      console.error(new Date().toISOString(), "findMySessions error:", error);
-
-      // Send a 500 response with the error message
-      res.status(500).json({
-        errors: [
-          {
-            msg: "Failed to find sessions: " + error.message,
-          },
-        ],
-      });
+      handleError(
+        error,
+        error.statusCode,
+        "feedback/findMySessions",
+        "Failed to find sessions",
+        res
+      );
     } finally {
       // Close the database connection if it was opened
       if (link) await link.end();
@@ -686,13 +643,13 @@ router.post(
       session = decodeObjectStrings(session);
       res.json(session);
     } catch (error) {
-      // Log the error with a timestamp for debugging
-      console.error(new Date().toISOString(), "loadGiveFeedback error:", error);
-
-      // Send a 500 response with the error message
-      res.status(500).json({
-        errors: [{ msg: "Failed to load session details: " + error.message }],
-      });
+      handleError(
+        error,
+        error.statusCode,
+        "feedback/loadGiveFeedback",
+        "Failed to load session details",
+        res
+      );
     } finally {
       // Close the database connection if it was opened
       if (link) await link.end();
@@ -750,13 +707,13 @@ router.post(
       // Respond with a success message
       res.json({ message: "Your feedback was submitted." });
     } catch (error) {
-      // Log the error with a timestamp for debugging
-      console.error(new Date().toISOString(), "giveFeedback error:", error);
-
-      // Send a 500 response with the error message
-      res.status(500).json({
-        errors: [{ msg: "Failed to submit feedback: " + error.message }],
-      });
+      handleError(
+        error,
+        error.statusCode,
+        "feedback/giveFeedback",
+        "Failed to submit feedback",
+        res
+      );
     } finally {
       // Close the database connection if it was opened
       if (link) await link.end();
@@ -833,13 +790,14 @@ router.post(
       const { fetchCertificate } = require("./routes/fetchCertificate");
       await fetchCertificate(sessionDetails, data.attendee, res);
     } catch (error) {
-      // Log the error with a timestamp for debugging
-      console.error(new Date().toISOString(), "fetchCertificate error:", error);
-
-      // Send a 500 response with the error message
-      res.status(500).json({
-        errors: [{ msg: "Failed to fetch certificate: " + error.message }],
-      });
+      handleError(
+        error,
+        error.statusCode,
+        "feedback/fetchCertificate",
+        "Failed to fetch certificate",
+        res,
+        true
+      );
     } finally {
       // Close the database connection if it was opened
       if (link) await link.end();
@@ -909,13 +867,13 @@ router.post(
       feedback = decodeObjectStrings(feedback);
       res.json(feedback);
     } catch (error) {
-      // Log the error with a timestamp for debugging
-      console.error(new Date().toISOString(), "viewFeedback error:", error);
-
-      // Send a 500 response with the error message
-      res.status(500).json({
-        errors: [{ msg: "Failed to load feedback report: " + error.message }],
-      });
+      handleError(
+        error,
+        error.statusCode,
+        "feedback/viewFeedback",
+        "Failed to load feedback report",
+        res
+      );
     } finally {
       // Close the database connection if it was opened
       if (link) await link.end();
@@ -977,15 +935,14 @@ router.post(
       const { fetchFeedbackPDF } = require("./routes/fetchFeedbackPDF");
       await fetchFeedbackPDF(data.id, res, link);
     } catch (error) {
-      // Log the error with a timestamp for debugging
-      console.error(new Date().toISOString(), "fetchFeedbackPDF error:", error);
-
-      // Send a 500 response with the error message
-      res.status(500).json({
-        errors: [
-          { msg: "Failed to fetch feedback PDF report: " + error.message },
-        ],
-      });
+      handleError(
+        error,
+        error.statusCode,
+        "feedback/fetchFeedbackPDF",
+        "Failed to fetch feedback PDF report",
+        res,
+        true
+      );
     } finally {
       // Close the database connection if it was opened
       if (link) await link.end();
@@ -1055,13 +1012,13 @@ router.post(
       attendance = decodeObjectStrings(attendance);
       res.json(attendance);
     } catch (error) {
-      // Log the error with a timestamp for debugging
-      console.error(new Date().toISOString(), "viewAttendance error:", error);
-
-      // Send a 500 response with the error message
-      res.status(500).json({
-        errors: [{ msg: "Failed to load attendance report: " + error.message }],
-      });
+      handleError(
+        error,
+        error.statusCode,
+        "feedback/viewAttendance",
+        "Failed to load attendance report",
+        res
+      );
     } finally {
       // Close the database connection if it was opened
       if (link) await link.end();
@@ -1124,19 +1081,14 @@ router.post(
       const { fetchAttendancePDF } = require("./routes/fetchAttendancePDF");
       await fetchAttendancePDF(data.id, res, link);
     } catch (error) {
-      // Log the error with a timestamp for debugging
-      console.error(
-        new Date().toISOString(),
-        "fetchAttendancePDF error:",
-        error
+      handleError(
+        error,
+        error.statusCode,
+        "feedback/fetchAttendancePDF",
+        "Failed to fetch attendance PDF report",
+        res,
+        true
       );
-
-      // Send a 500 response with the error message
-      res.status(500).json({
-        errors: [
-          { msg: "Failed to fetch attendance PDF report: " + error.message },
-        ],
-      });
     } finally {
       // Close the database connection if it was opened
       if (link) await link.end();

@@ -87,15 +87,11 @@ const idIsUnique = async (link, tblName, id) => {
     throw new Error("Database connection failed.");
   }
 
-  try {
-    const [result] = await link.execute(
-      `SELECT COUNT(*) as count FROM ${tblName} WHERE id = ?`,
-      [id]
-    );
-    return result[0].count === 0; // Return true if count is zero (ID is unique)
-  } catch (error) {
-    throw new Error("dbIDIsUnique database query failed: " + error.message);
-  }
+  const [result] = await link.execute(
+    `SELECT COUNT(*) as count FROM ${tblName} WHERE id = ?`,
+    [id]
+  );
+  return result[0].count === 0; // Return true if count is zero (ID is unique)
 };
 
 module.exports = { createUniqueId };

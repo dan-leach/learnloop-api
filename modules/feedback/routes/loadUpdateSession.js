@@ -32,21 +32,17 @@ const dateUtilities = require("../../utilities/dateUtilities");
  * @throws {Error} - Throws an error if the session cannot be retrieved or processed.
  */
 const loadUpdateSession = async (link, id) => {
-  try {
-    const session = await selectSessionDetails(link, id);
-    session.date = dateUtilities.formatDateISO(session.date);
+  const session = await selectSessionDetails(link, id);
+  session.date = dateUtilities.formatDateISO(session.date);
 
-    const subsessionIDs = session.subsessions;
-    session.subsessions = await selectSubsessionDetails(link, subsessionIDs);
+  const subsessionIDs = session.subsessions;
+  session.subsessions = await selectSubsessionDetails(link, subsessionIDs);
 
-    session.organisers = session.organisers.map(
-      ({ pinHash, salt, lastSent, ...rest }) => rest
-    );
+  session.organisers = session.organisers.map(
+    ({ pinHash, salt, lastSent, ...rest }) => rest
+  );
 
-    return session;
-  } catch (error) {
-    throw error;
-  }
+  return session;
 };
 
 /**
@@ -64,24 +60,19 @@ const loadUpdateSession = async (link, id) => {
  * @throws {Error} - Throws an error if the session cannot be found or the query fails.
  */
 const selectSessionDetails = async (link, id) => {
-  try {
-    const [rows] = await link.execute(
-      `SELECT * FROM ${config.feedback.tables.tblSessions} WHERE id = ?`,
-      [id]
-    );
+  const [rows] = await link.execute(
+    `SELECT * FROM ${config.feedback.tables.tblSessions} WHERE id = ?`,
+    [id]
+  );
 
-    if (rows.length > 0) {
-      const session = rows[0];
-      ["subsessions", "questions", "organisers"].forEach((field) => {
-        if (session[field]) session[field] = JSON.parse(session[field]);
-      });
-      return session;
-    }
-
-    throw new Error("Session not found.");
-  } catch (error) {
-    throw error;
+  if (rows.length > 0) {
+    const session = rows[0];
+    ["subsessions", "questions", "organisers"].forEach((field) => {
+      if (session[field]) session[field] = JSON.parse(session[field]);
+    });
+    return session;
   }
+  throw Object.assign(new Error("Session not found"), { statusCode: 400 });
 };
 
 /**
@@ -99,33 +90,29 @@ const selectSessionDetails = async (link, id) => {
  * @throws {Error} - Throws an error if subsession details cannot be fetched.
  */
 const selectSubsessionDetails = async (link, subsessionIDs) => {
-  try {
-    const subsessions = await Promise.all(
-      subsessionIDs.map((id) => selectSessionDetails(link, id))
-    );
+  const subsessions = await Promise.all(
+    subsessionIDs.map((id) => selectSessionDetails(link, id))
+  );
 
-    const cleanedSubsessions = subsessions.map((subsession) => {
-      const { email, notifications, lastSent } = subsession.organisers[0];
-      const {
-        organisers,
-        attendance,
-        certificate,
-        closed,
-        date,
-        datetime,
-        multipleDates,
-        questions,
-        subsessions,
-        ...rest
-      } = subsession;
+  const cleanedSubsessions = subsessions.map((subsession) => {
+    const { email, notifications, lastSent } = subsession.organisers[0];
+    const {
+      organisers,
+      attendance,
+      certificate,
+      closed,
+      date,
+      datetime,
+      multipleDates,
+      questions,
+      subsessions,
+      ...rest
+    } = subsession;
 
-      return { ...rest, email, notifications, lastSent };
-    });
+    return { ...rest, email, notifications, lastSent };
+  });
 
-    return cleanedSubsessions;
-  } catch (error) {
-    throw error;
-  }
+  return cleanedSubsessions;
 };
 
 module.exports = {

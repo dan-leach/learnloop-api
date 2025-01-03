@@ -7,11 +7,13 @@
  * @requires express
  * @requires cors
  * @requires body-parser
+ * @requires ../utilities/routeUtilities Error handling
  */
 
 const express = require("express");
 var cors = require("cors");
 const bodyParser = require("body-parser");
+const { handleError } = require("./modules/utilities/routeUtilities");
 
 const app = express();
 app.use(cors());
@@ -31,10 +33,21 @@ app.set("trust proxy", 3);
  * @returns {string} 200 - HTML content that redirects the user to an external website.
  */
 app.get("/", (req, res) => {
-  const config = require("./config.json");
-  res.send(
-    `Please go to <a href='${config.client.url}'>${config.client.url}</a> instead.`
-  );
+  try {
+    const config = require("./config.json");
+    res.send(
+      `Please go to <a href='${config.client.url}'>${config.client.url}</a> instead.`
+    );
+  } catch (error) {
+    handleError(
+      error,
+      error.statusCode,
+      "/",
+      "Failed to load root level api redirect",
+      res,
+      true
+    );
+  }
 });
 
 /**
@@ -53,29 +66,33 @@ app.get("/", (req, res) => {
  * @returns {string} 500 - Error message if QR code generation fails.
  */
 app.get("/qrcode", async (req, res) => {
-  const QRCode = require("qrcode");
-  const config = require("./config.json");
-
-  // Validate the session ID is present and exactly 6 characters long
-  const sessionId = req.query.id;
-  if (!sessionId || sessionId.length !== 6) {
-    res.status(400).send("Failed to generate QR code: Invalid session ID.");
-    return;
-  }
-
-  // Construct the URL using the session ID and the configured base URL
-  const qrUrl = `${config.client.url}/${sessionId}`;
-
   try {
+    const QRCode = require("qrcode");
+    const config = require("./config.json");
+
+    // Validate the session ID is present and exactly 6 characters long
+    const sessionId = req.query.id;
+    if (!sessionId || sessionId.length !== 6) {
+      res.status(400).send("Failed to generate QR code: Invalid session ID.");
+      return;
+    }
+
+    // Construct the URL using the session ID and the configured base URL
+    const qrUrl = `${config.client.url}/${sessionId}`;
+
     // Set the content type to inform the client that the response is a PNG image
     res.setHeader("Content-Type", "image/png");
 
     // Generate the QR code and stream it directly to the response
     await QRCode.toFileStream(res, qrUrl);
   } catch (error) {
-    // Log the error for debugging purposes and send a 500 status with an error message
-    console.error(new Date().toISOString(), "Error generating QR code:", error);
-    res.status(500).send(`Failed to generate QR code: ${error.message}`);
+    handleError(
+      error,
+      error.statusCode,
+      "/qrcode",
+      "Failed to generate QR code",
+      res
+    );
   }
 });
 
@@ -89,11 +106,21 @@ app.get("/qrcode", async (req, res) => {
  * @returns {Object} 200 - JSON object containing the server's configuration.
  */
 app.get("/config", (req, res) => {
-  // Import the configuration file containing settings to be shared with the client
-  const config = require("./config.json");
+  try {
+    // Import the configuration file containing settings to be shared with the client
+    const config = require("./config.json");
 
-  // Send the configuration file as a JSON response
-  res.json(config);
+    // Send the configuration file as a JSON response
+    res.json(config);
+  } catch (error) {
+    handleError(
+      error,
+      error.statusCode,
+      "/config",
+      "Failed to load configuration settings",
+      res
+    );
+  }
 });
 
 /**
@@ -128,9 +155,11 @@ app.use("/interaction", require("./modules/interaction/index.js"));
  * @returns {Object} 500 - JSON object containing an error message.
  */
 app.use("*", (req, res) => {
-  res.status(400).json({
-    errors: [{ msg: "Incorrect API route" }],
-  });
+  try {
+    throw Object.assign(new Error("Incorrect API route"), { statusCode: 400 });
+  } catch (error) {
+    handleError(error, error.statusCode, "*", "Wildcard catch", res);
+  }
 });
 
 /**

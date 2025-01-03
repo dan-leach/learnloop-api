@@ -30,30 +30,26 @@ const dateUtilities = require("../../utilities/dateUtilities");
  * @throws {Error} - Throws an error if the session details cannot be retrieved or formatted.
  */
 const loadGiveFeedback = async (link, id) => {
-  try {
-    // Import methods for fetching session and subsession details
-    const loadUpdateSessionRoute = require("./loadUpdateSession");
+  // Import methods for fetching session and subsession details
+  const loadUpdateSessionRoute = require("./loadUpdateSession");
 
-    // Fetch the main session details
-    const session = await loadUpdateSessionRoute.selectSessionDetails(link, id);
+  // Fetch the main session details
+  const session = await loadUpdateSessionRoute.selectSessionDetails(link, id);
 
-    // Format the session date to ISO format
-    session.date = dateUtilities.formatDateISO(session.date);
+  // Format the session date to ISO format
+  session.date = dateUtilities.formatDateISO(session.date);
 
-    // Extract and retrieve subsession details, if any
-    const subsessionIDs = session.subsessions;
-    session.subsessions = await loadUpdateSessionRoute.selectSubsessionDetails(
-      link,
-      subsessionIDs
-    );
+  // Extract and retrieve subsession details, if any
+  const subsessionIDs = session.subsessions;
+  session.subsessions = await loadUpdateSessionRoute.selectSubsessionDetails(
+    link,
+    subsessionIDs
+  );
 
-    // Remove organiser data from the session object
-    delete session.organisers;
+  // Remove organiser data from the session object
+  delete session.organisers;
 
-    return session; // Return the processed session object
-  } catch (error) {
-    throw error; // Propagate errors for upstream handling
-  }
+  return session; // Return the processed session object
 };
 
 module.exports = { loadGiveFeedback };

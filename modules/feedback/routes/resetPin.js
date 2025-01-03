@@ -49,7 +49,10 @@ const resetPin = async (link, data, session) => {
   );
 
   if (organiserIndex === -1) {
-    throw new Error("Email not found as organiser for this session.");
+    throw Object.assign(
+      new Error("Email not found as organiser for this session"),
+      { statusCode: 401 }
+    );
   }
 
   // Generate a new PIN, salt, and hash

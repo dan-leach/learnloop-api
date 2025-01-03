@@ -51,92 +51,86 @@ const fetchAttendancePDF = async (id, res, link) => {
   );
   const { attendance } = await viewAttendance(sessionDetails.id, link);
 
-  try {
-    // Create a new PDF document
-    const doc = new PDFDocument({
-      size: "A4",
-      margins: { top: 100, bottom: 50, left: 50, right: 50 },
-    });
+  // Create a new PDF document
+  const doc = new PDFDocument({
+    size: "A4",
+    margins: { top: 100, bottom: 50, left: 50, right: 50 },
+  });
 
-    // Set response headers for PDF download
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename=${decode(sessionDetails.title)}-attendance.pdf`
-    );
+  // Set response headers for PDF download
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader(
+    "Content-Disposition",
+    `attachment; filename=${decode(sessionDetails.title)}-attendance.pdf`
+  );
 
-    // Pipe the PDF document to the HTTP response
-    doc.pipe(res);
+  // Pipe the PDF document to the HTTP response
+  doc.pipe(res);
 
-    // Add header with background color and logo
-    const headerHeight = 60;
-    const pageWidth = doc.page.width;
+  // Add header with background color and logo
+  const headerHeight = 60;
+  const pageWidth = doc.page.width;
 
-    doc.rect(0, 0, pageWidth, headerHeight).fill("#17a2b8");
+  doc.rect(0, 0, pageWidth, headerHeight).fill("#17a2b8");
 
-    const logoPath = path.resolve(__dirname, "../../utilities/logo.png");
-    doc.image(logoPath, 5, 10, { height: 40 });
+  const logoPath = path.resolve(__dirname, "../../utilities/logo.png");
+  doc.image(logoPath, 5, 10, { height: 40 });
 
-    // Add report title and details
-    doc
-      .fill("black")
-      .font("Helvetica-Bold")
-      .moveDown(1)
-      .fontSize(26)
-      .text("Attendance Report", { align: "left" })
-      .moveDown(0.5);
+  // Add report title and details
+  doc
+    .fill("black")
+    .font("Helvetica-Bold")
+    .moveDown(1)
+    .fontSize(26)
+    .text("Attendance Report", { align: "left" })
+    .moveDown(0.5);
 
-    doc
-      .font("Helvetica")
-      .fontSize(14)
-      .text(
-        `For '${decode(sessionDetails.title)}' by ${decode(
-          sessionDetails.name
-        )}`
-      )
-      .text(`Date: ${dateUtilities.formatDateUK(sessionDetails.date)}`)
-      .moveDown(0.3)
-      .text(`Total attendees: ${attendance.count}`)
-      .moveDown(1);
+  doc
+    .font("Helvetica")
+    .fontSize(14)
+    .text(
+      `For '${decode(sessionDetails.title)}' by ${decode(sessionDetails.name)}`
+    )
+    .text(`Date: ${dateUtilities.formatDateUK(sessionDetails.date)}`)
+    .moveDown(0.3)
+    .text(`Total attendees: ${attendance.count}`)
+    .moveDown(1);
 
-    const generatedDate = new Date();
-    doc
-      .text(
-        `Report generated: ${generatedDate.toLocaleString("en-UK", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        })}`
-      )
-      .moveDown(1);
+  const generatedDate = new Date();
+  doc
+    .text(
+      `Report generated: ${generatedDate.toLocaleString("en-UK", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })}`
+    )
+    .moveDown(1);
 
-    // Add attendance details by region and organization
-    for (const region of attendance.regions) {
-      if (attendance.regions.length > 1) {
-        doc.fontSize(20).text(`${region.name} (${region.count})`).moveDown(0.5);
-      }
-
-      for (const organisation of region.organisations) {
-        doc
-          .fontSize(14)
-          .text(`${decode(organisation.name)} (${organisation.count})`)
-          .moveDown(0.3);
-
-        doc
-          .fontSize(12)
-          .text(decode(organisation.attendees.join(", ").replace(/,\s*$/, ".")))
-          .moveDown(1);
-      }
+  // Add attendance details by region and organization
+  for (const region of attendance.regions) {
+    if (attendance.regions.length > 1) {
+      doc.fontSize(20).text(`${region.name} (${region.count})`).moveDown(0.5);
     }
 
-    // Finalize the PDF document
-    doc.end();
-    return true;
-  } catch (error) {
-    throw new Error(`Failed to generate attendance PDF: ${error.message}`);
+    for (const organisation of region.organisations) {
+      doc
+        .fontSize(14)
+        .text(`${decode(organisation.name)} (${organisation.count})`)
+        .moveDown(0.3);
+
+      doc
+        .fontSize(12)
+        .text(decode(organisation.attendees.join(", ").replace(/,\s*$/, ".")))
+        .moveDown(1);
+    }
   }
+
+  // Finalize the PDF document
+  doc.end();
+  return true;
 };
 
 module.exports = { fetchAttendancePDF };

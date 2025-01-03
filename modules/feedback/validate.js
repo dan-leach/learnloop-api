@@ -10,6 +10,7 @@
  *
  * @requires express-validator - Validation library for performing data validation and sanitization
  * @requires ../../config.json - Used to check question types match expected values
+ * @requires ../utilities/routeUtilities Error handling
  *
  * @exports insertSessionRules - Ruleset for the insertSession route
  * @exports loadUpdateSessionRules - Ruleset for the loadUpdateSession route
@@ -23,6 +24,7 @@
 const { check, body, validationResult } = require("express-validator");
 const config = require("../../config.json");
 const { escape } = require("querystring");
+const { handleError } = require("../utilities/routeUtilities");
 
 /**
  * Validation rules for the insertSession route.
@@ -386,14 +388,21 @@ const fetchCertificateRules = [
 
 // Middleware function to validate the request
 const validateRequest = (req, res, next) => {
-  //
-  console.error(new Date().toISOString(), "  ----- new req");
-  //
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    next();
+  } catch (error) {
+    handleError(
+      error,
+      500,
+      "validateRequest",
+      "Failed to validate request",
+      res
+    );
   }
-  next();
 };
 
 module.exports = {

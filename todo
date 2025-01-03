@@ -1,8 +1,12 @@
+Check viewAttendance disabled for subsessions
+
 Restrict CORS on api htaccess 
 Check each api response (esp viewFeedback and viewAttendance for session series) to check no sensitive data leakage
 Check how html encoded symbols work including on PDFs and emails
 
 Testing feedback:
+
+**check all links on all emails during testing schemas
 A
 1. Create a session
 2. Edit to convert to session series
@@ -33,3 +37,12 @@ C
 
 D
 1. Find my sessions
+
+E.
+1. Create session with attendance disabled
+2. Check not logged
+3. Check viewAttendance and pdf
+
+F
+1. Create session with certificate disabled
+2. Check no certificate

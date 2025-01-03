@@ -82,19 +82,15 @@ const hashPin = (pin, salt) => {
  */
 async function getOrganisers(id, module, link) {
   const tbl = config[module].tables.tblSessions;
-  try {
-    const [rows] = await link.execute(
-      `SELECT organisers FROM ${tbl} WHERE id = ?`,
-      [id]
-    );
+  const [rows] = await link.execute(
+    `SELECT organisers FROM ${tbl} WHERE id = ?`,
+    [id]
+  );
 
-    if (rows.length > 0) {
-      return JSON.parse(rows[0].organisers);
-    } else {
-      throw new Error("Session not found");
-    }
-  } catch (error) {
-    throw error; // Rethrow the error for handling in the calling function
+  if (rows.length > 0) {
+    return JSON.parse(rows[0].organisers);
+  } else {
+    throw Object.assign(new Error("Session not found"), { statusCode: 400 });
   }
 }
 
