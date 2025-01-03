@@ -29,6 +29,76 @@ const {
   handleError,
 } = require("../utilities/routeUtilities");
 
+///////////////////////////////////
+router.get("/go", async (req, res) => {
+  let link; // Database connection variable
+  try {
+    throw new Error("Disabled");
+    // Open a connection to the database
+    link = await openDbConnection(dbConfig);
+    const [rows] = await link.execute(
+      "SELECT id FROM tbl_feedback_sessions_v5"
+    );
+    const idArray = rows.map((row) => row.id); // Extract 'id' values into an array
+
+    let count = 0;
+    for (let idStr of idArray) {
+      count++;
+      //if (count > 3) break;
+      //console.error("##########", count, idStr);
+      const [rows] = await link.execute(
+        `SELECT * FROM tbl_feedback_sessions_v5 WHERE id = ?`,
+        [idStr]
+      );
+
+      const session = rows[0];
+      session.organisers = [
+        {
+          name: session.name,
+          email: session.email,
+          notifications: session.notifications,
+          lastSent: session.lastSent,
+          salt: session.salt,
+          pinHash: session.pinHash,
+          isLead: session.isSubsession ? false : true,
+          canEdit: session.isSubsession ? false : true,
+        },
+      ];
+      delete session.email;
+      delete session.notifications;
+      delete session.lastSent;
+      delete session.salt;
+      delete session.pinHash;
+      //console.error(session);
+
+      await link.execute(
+        `INSERT INTO tbl_feedback_sessions_v6 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          session.id,
+          session.name,
+          session.title,
+          session.date,
+          session.multipleDates,
+          session.organisers,
+          session.questions,
+          session.certificate,
+          session.subsessions,
+          session.isSubsession,
+          session.attendance,
+          session.closed,
+          session.datetime,
+        ]
+      );
+    }
+
+    res.send(`Done 4`);
+  } catch (error) {
+    handleError(error, error.statusCode, "feedback/go", "GO failed", res, true);
+  } finally {
+    if (link) await link.end();
+  }
+});
+
 /**
  * @async
  * @route POST /feedback/insertSession

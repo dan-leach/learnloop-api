@@ -1,52 +1,38 @@
-Fix edit questions
+Db harmonisation v5.0 --> v6
 
+1. id - no change
+2. name - no change (but also use to construct organisers)
+3. email - remove and use to construct organisers
+4. title - no change
+5. date - no change
+6. multipleDate - no change
+7. questions - no change (but check some for compatibility)
+8. certificate - no change
+9. subsessions - no change
+10. isSubsession - no change
+11. notifications - remove and use to construct organisers
+12. lastSent - remove and use to construct organisers
+13. attendance - no change
+14. closed - no change
+15. pinHash - remove and use to construct organisers
+16. salt - remove and use to construct organisers
+17. datetime - no change
+
+Activate maintenance mode
+Download backup v5 tables
+Re-run GO
+Check isLead and canEdit working correctly
+Test selection of sessions including subsessions and questions, using all different routes
+Alter interaction module on homepage
+Add update notice
+Consider emails to recent users
+
+Update versioning to v6
+Remove GO route
+Check all api changes committed
+Move existing www to legacy folder
+Deploy api as build version
+Deploy v6 client as build version
+Final tests including mobile
 Restrict CORS on api htaccess
-
-Testing feedback:
-
-\*\*check all links on all emails during testing schemas
-A
-
-1. Create a session
-2. Edit to convert to session series
-3. Add an organiser
-4. Submit feedback
-5. View feedback + pdf
-6. View attendance + pdf
-7. Attempt to edit
-8. Close session
-9. Attempt to edit, submit feedback, view attendance and feedback once closed
-
-B
-
-1. Create a session series
-2. Edit and remove subsessions
-3. Edit and remove subsessions and organisers using a non-lead organiser account
-4. Attempt edit with a non-edit organiser account
-5. Submit feedback
-6. Attempt edit session
-7. Edit notification settings
-8. Submit feedback (check notification setting update worked)
-9. Remove organiser, add a different organiser
-10. Submit feedback
-11. Attempt view feedback and attendance using lead organiser, deleted organiser, newly added organiser
-12. Reset pin and reattempt view feedback for lead organiser, deleted organiser, newly addedd organiser
-
-C
-
-1. Create a session from template and re-run test schema A
-
-D
-
-1. Find my sessions
-
-E.
-
-1. Create session with attendance disabled
-2. Check not logged
-3. Check viewAttendance and pdf
-
-F
-
-1. Create session with certificate disabled
-2. Check no certificate
+Remove maintenance mode
