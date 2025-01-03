@@ -127,18 +127,14 @@ router.post(
 
       // Check if the PIN is valid for an organiser
       if (!user) {
-        res.status(401).json({
-          errors: [{ msg: "Invalid PIN." }],
-        });
-        return;
+        throw Object.assign(new Error("Invalid PIN"), { statusCode: 401 });
       }
 
       // Check if the organiser has editing rights
-      if (!user.canEdit) {
-        res.status(401).json({
-          errors: [{ msg: "User does not have editing rights." }],
+      if (!user.canEdit && !data.isTemplate) {
+        throw Object.assign(new Error("User does not have editing rights"), {
+          statusCode: 401,
         });
-        return;
       }
 
       // Check if session already has submitted feedback
@@ -147,13 +143,11 @@ router.post(
         data.id,
         link
       );
-      if (!isNaN(feedback.score[0])) {
-        res.status(401).json({
-          errors: [
-            { msg: "Cannot edit session once feedback has been submitted." },
-          ],
-        });
-        return;
+      if (!isNaN(feedback.score[0]) && !data.isTemplate) {
+        throw Object.assign(
+          new Error("Cannot edit session once feedback has been submitted"),
+          { statusCode: 403 }
+        );
       }
 
       // Import the function to load the session details
@@ -164,14 +158,18 @@ router.post(
 
       // Check that the session isn't closed
       if (session.closed) {
-        res.status(403).json({
-          errors: [{ msg: "Session is closed." }],
-        });
-        return;
+        throw Object.assign(
+          new Error("Cannot edit session which has been closed"),
+          { statusCode: 401 }
+        );
       }
 
       // Respond with the session details
       session = decodeObjectStrings(session);
+      if (data.isTemplate) {
+        session.multipleDates = false;
+        session.date = "";
+      }
       res.json(session);
     } catch (error) {
       handleError(
@@ -236,18 +234,14 @@ router.post(
 
       // Check if the PIN is valid for an organiser
       if (!user) {
-        res.status(401).json({
-          errors: [{ msg: "Invalid PIN." }],
-        });
-        return;
+        throw Object.assign(new Error("Invalid PIN"), { statusCode: 401 });
       }
 
       // Check if the organiser has editing rights
       if (!user.canEdit) {
-        res.status(401).json({
-          errors: [{ msg: "User does not have editing rights." }],
+        throw Object.assign(new Error("User does not have editing rights"), {
+          statusCode: 403,
         });
-        return;
       }
 
       // Check if session already has submitted feedback
@@ -257,12 +251,10 @@ router.post(
         link
       );
       if (!isNaN(feedback.score[0])) {
-        res.status(401).json({
-          errors: [
-            { msg: "Cannot edit session once feedback has been submitted." },
-          ],
-        });
-        return;
+        throw Object.assign(
+          new Error("Cannot edit session once feedback has been submitted"),
+          { statusCode: 403 }
+        );
       }
 
       // Import the function to update the session in the database
@@ -336,34 +328,29 @@ router.post(
         pinIsValid(data.pin, organiser.salt, organiser.pinHash)
       );
       if (!user) {
-        res.status(401).json({
-          errors: [{ msg: "Invalid PIN." }],
-        });
-        return;
+        throw Object.assign(new Error("Invalid PIN"), { statusCode: 401 });
       }
 
       // Check if the organiser has editing rights
       if (!user.canEdit) {
-        res.status(401).json({
-          errors: [{ msg: "User does not have editing rights." }],
+        throw Object.assign(new Error("User does not have editing rights"), {
+          statusCode: 403,
         });
-        return;
       }
 
       // Check if the session is a subsession
       if (sessionDetails.isSubsession) {
-        res.status(400).json({
-          errors: [{ msg: "Subsessions cannot be closed directly." }],
-        });
-        return;
+        throw Object.assign(
+          new Error("Subsessions cannot be closed directly"),
+          { statusCode: 403 }
+        );
       }
 
       // Check if the session is already closed
       if (sessionDetails.closed) {
-        res.status(400).json({
-          errors: [{ msg: "Session is already closed." }],
+        throw Object.assign(new Error("Session is already closed"), {
+          statusCode: 403,
         });
-        return;
       }
 
       // Close the session in the database
@@ -433,7 +420,8 @@ router.post(
 
       // Respond with a success message
       res.json({
-        message: "You pin was reset. Please check your inbox for your new pin.",
+        message:
+          "Your PIN was reset. Please check your inbox for your new PIN.",
         sendMailFails,
       });
     } catch (error) {
@@ -500,10 +488,7 @@ router.post(
       );
       const organiser = sessionDetails.organisers[organiserIndex];
       if (!organiser) {
-        res.status(401).json({
-          errors: [{ msg: "Invalid PIN." }],
-        });
-        return;
+        throw Object.assign(new Error("Invalid PIN"), { statusCode: 401 });
       }
 
       // Close the session in the database
@@ -633,10 +618,10 @@ router.post(
 
       // Check that the session isn't closed
       if (session.closed) {
-        res.status(403).json({
-          errors: [{ msg: "Session is closed." }],
-        });
-        return;
+        throw Object.assign(
+          new Error("Session is closed to feedback submissions"),
+          { statusCode: 403 }
+        );
       }
 
       // Respond with the session details
@@ -692,10 +677,10 @@ router.post(
       const { loadGiveFeedback } = require("./routes/loadGiveFeedback");
       const session = await loadGiveFeedback(link, data.id);
       if (session.closed) {
-        res.status(403).json({
-          errors: [{ msg: "Session is closed." }],
-        });
-        return;
+        throw Object.assign(
+          new Error("Session is closed to feedback submissions"),
+          { statusCode: 403 }
+        );
       }
 
       // Import the function to insert the feedback into the database and send notifications
@@ -735,7 +720,7 @@ router.post(
  * @requires ./routes/fetchCertificate - Contains the logic for creating a certificate of attendance.
  *
  * @param {object} req.body.data - The data containing the session ID, and attendee name, region and organisation.
- * @returns {object} 200 - ?
+ * @returns {object} 200 - Streamed blob of certificate of attendance
  * @returns {object} 401 - Error message if the session does not have certificate of attendance enabled.
  * @returns {object} 500 - Error message if inserting the attendance data or building the certificate fails.
  */
@@ -760,25 +745,19 @@ router.post(
       );
 
       if (sessionDetails.closed) {
-        res.status(401).json({
-          errors: [
-            {
-              msg: `The session '${sessionDetails.title}' has been closed by an organiser.`,
-            },
-          ],
-        });
-        return;
+        throw Object.assign(
+          new Error("The session has been closed by an organiser"),
+          { statusCode: 403 }
+        );
       }
 
       if (!sessionDetails.certificate) {
-        res.status(401).json({
-          errors: [
-            {
-              msg: `The session '${sessionDetails.title}' does not have the certificate of attendance option enabled.`,
-            },
-          ],
-        });
-        return;
+        throw Object.assign(
+          new Error(
+            "The session does not have the certificate of attendance option enabled"
+          ),
+          { statusCode: 403 }
+        );
       }
 
       if (sessionDetails.attendance) {
@@ -851,10 +830,7 @@ router.post(
 
       // Check if the PIN is valid for an organiser
       if (!user) {
-        res.status(401).json({
-          errors: [{ msg: "Invalid PIN." }],
-        });
-        return;
+        throw Object.assign(new Error("Invalid PIN"), { statusCode: 401 });
       }
 
       // Import the function to load the session details
@@ -864,6 +840,7 @@ router.post(
       let feedback = await viewFeedback(data.id, link);
 
       // Respond with the feedback
+
       feedback = decodeObjectStrings(feedback);
       res.json(feedback);
     } catch (error) {
@@ -894,7 +871,7 @@ router.post(
  * @requires ./routes/fetchFeedbackPDF - Contains the logic for creating a feedback pdf report.
  *
  * @param {object} req.body.data - The data containing the session ID and pin.
- * @returns {object} 200 - ?
+ * @returns {object} 200 - Streamed blob of feedback report pdf
  * @returns {object} 500 - Error message if inserting the attendance data or building the certificate fails.
  */
 router.post(
@@ -926,10 +903,7 @@ router.post(
 
       // Check if the PIN is valid for an organiser
       if (!user) {
-        res.status(401).json({
-          errors: [{ msg: "Invalid PIN." }],
-        });
-        return;
+        throw Object.assign(new Error("Invalid PIN"), { statusCode: 401 });
       }
 
       const { fetchFeedbackPDF } = require("./routes/fetchFeedbackPDF");
@@ -996,10 +970,7 @@ router.post(
 
       // Check if the PIN is valid for an organiser
       if (!user) {
-        res.status(401).json({
-          errors: [{ msg: "Invalid PIN." }],
-        });
-        return;
+        throw Object.assign(new Error("Invalid PIN"), { statusCode: 401 });
       }
 
       // Import the function to load the attendance data
@@ -1039,7 +1010,7 @@ router.post(
  * @requires ./routes/fetchAttendancePDF - Contains the logic for creating an attendance pdf report.
  *
  * @param {object} req.body.data - The data containing the session ID and pin.
- * @returns {object} 200 - ?
+ * @returns {object} 200 - Streamed blob of attendance report pdf
  * @returns {object} 401 - Error message if the session does not have certificate of attendance enabled.
  * @returns {object} 500 - Error message if inserting the attendance data or building the certificate fails.
  */
@@ -1072,10 +1043,7 @@ router.post(
 
       // Check if the PIN is valid for an organiser
       if (!user) {
-        res.status(401).json({
-          errors: [{ msg: "Invalid PIN." }],
-        });
-        return;
+        throw Object.assign(new Error("Invalid PIN"), { statusCode: 401 });
       }
 
       const { fetchAttendancePDF } = require("./routes/fetchAttendancePDF");

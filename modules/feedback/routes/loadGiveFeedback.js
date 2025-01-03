@@ -46,8 +46,8 @@ const loadGiveFeedback = async (link, id) => {
     );
   }
 
-  // Format the session date to ISO format
-  session.date = dateUtilities.formatDateISO(session.date);
+  // Format the session date to UK format
+  session.date = dateUtilities.formatDateUK(session.date);
 
   // Extract and retrieve subsession details, if any
   const subsessionIDs = session.subsessions;

@@ -30,8 +30,10 @@ function decodeObjectStrings(obj) {
     const decodedObj = {};
     for (const key in obj) {
       if (obj.hasOwnProperty(key)) {
-        if (key != "date") {
+        if (key === "date") {
           // Don't decode the date as it returns NaN
+          decodedObj[key] = obj[key];
+        } else {
           decodedObj[key] = decodeObjectStrings(obj[key]);
         }
       }

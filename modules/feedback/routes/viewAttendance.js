@@ -33,19 +33,19 @@ async function viewAttendance(id, link) {
   const loadUpdateSessionRoute = require("./loadUpdateSession");
   const session = await loadUpdateSessionRoute.selectSessionDetails(link, id);
 
+  if (!session.attendance) {
+    throw Object.assign(
+      new Error("Attendance register is not enabled for this session"),
+      { statusCode: 404 }
+    );
+  }
+
   if (session.isSubsession) {
     throw Object.assign(
       new Error(
         "Attendance data is only available to session series organisers"
       ),
       { statusCode: 401 }
-    );
-  }
-
-  if (!session.attendance) {
-    throw Object.assign(
-      new Error("Attendance register is not enabled for this session"),
-      { statusCode: 400 }
     );
   }
 

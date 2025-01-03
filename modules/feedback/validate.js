@@ -218,6 +218,8 @@ const loadUpdateSessionRules = [
     .withMessage("Pin must be provided.")
     .isNumeric()
     .withMessage("Pin field must be data type [number]."),
+
+  check("isTemplate").optional().isBoolean(),
 ];
 
 /**

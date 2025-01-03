@@ -88,7 +88,7 @@ const fetchFeedbackPDF = async (id, res, link) => {
     .text(
       `For '${decode(sessionDetails.title)}' by ${decode(
         sessionDetails.name
-      )} on ${dateUtilities.formatDateUK(sessionDetails.date)}`
+      )} on ${dateUtilities.formatDateUK(new Date(sessionDetails.date))}`
     )
     .moveDown(0.3);
 

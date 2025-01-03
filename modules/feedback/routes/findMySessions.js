@@ -156,7 +156,9 @@ const buildMailBody = (foundSessions, organiser, appURL, shortenedAppURL) => {
         session.id
       } | Status: ${
         session.closed ? "closed" : "open"
-      } | <a href="${appURL}/?resetPIN=${session.id}">Reset PIN</a></p>`;
+      } | <a href="${appURL}/feedback/resetPIN/${
+        session.id
+      }">Reset PIN</a></p>`;
     }
   }
 

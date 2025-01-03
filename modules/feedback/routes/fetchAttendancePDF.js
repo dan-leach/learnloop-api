@@ -91,7 +91,7 @@ const fetchAttendancePDF = async (id, res, link) => {
     .text(
       `For '${decode(sessionDetails.title)}' by ${decode(sessionDetails.name)}`
     )
-    .text(`Date: ${dateUtilities.formatDateUK(sessionDetails.date)}`)
+    .text(`Date: ${dateUtilities.formatDateUK(new Date(sessionDetails.date))}`)
     .moveDown(0.3)
     .text(`Total attendees: ${attendance.count}`)
     .moveDown(1);

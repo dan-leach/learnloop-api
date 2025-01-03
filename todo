@@ -1,13 +1,12 @@
-Check viewAttendance disabled for subsessions
+Fix edit questions
 
-Restrict CORS on api htaccess 
-Check each api response (esp viewFeedback and viewAttendance for session series) to check no sensitive data leakage
-Check how html encoded symbols work including on PDFs and emails
+Restrict CORS on api htaccess
 
 Testing feedback:
 
-**check all links on all emails during testing schemas
+\*\*check all links on all emails during testing schemas
 A
+
 1. Create a session
 2. Edit to convert to session series
 3. Add an organiser
@@ -19,13 +18,14 @@ A
 9. Attempt to edit, submit feedback, view attendance and feedback once closed
 
 B
+
 1. Create a session series
 2. Edit and remove subsessions
 3. Edit and remove subsessions and organisers using a non-lead organiser account
 4. Attempt edit with a non-edit organiser account
 5. Submit feedback
 6. Attempt edit session
-7. Edit notification settings 
+7. Edit notification settings
 8. Submit feedback (check notification setting update worked)
 9. Remove organiser, add a different organiser
 10. Submit feedback
@@ -33,16 +33,20 @@ B
 12. Reset pin and reattempt view feedback for lead organiser, deleted organiser, newly addedd organiser
 
 C
+
 1. Create a session from template and re-run test schema A
 
 D
+
 1. Find my sessions
 
 E.
+
 1. Create session with attendance disabled
 2. Check not logged
 3. Check viewAttendance and pdf
 
 F
+
 1. Create session with certificate disabled
 2. Check no certificate

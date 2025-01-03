@@ -70,6 +70,13 @@ const updateSession = async (link, data, user) => {
   // Retrieve old session details from the database
   const oldSessionDetails = await getOldSessionDetails(data.id, link);
 
+  if (oldSessionDetails.closed) {
+    throw Object.assign(
+      new Error("Cannot edit session which has been closed"),
+      { statusCode: 403 }
+    );
+  }
+
   // Find the lead organiser from the old session details
   const leadOrganiser = oldSessionDetails.organisers.find(
     (oldOrganiser) => oldOrganiser.isLead === true

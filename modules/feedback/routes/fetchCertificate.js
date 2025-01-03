@@ -133,9 +133,14 @@ const fetchCertificate = async (sessionDetails, attendee, res) => {
 
   doc
     .fontSize(16)
-    .text(`Session date: ${dateUtilities.formatDateUK(sessionDetails.date)}`, {
-      align: "right",
-    });
+    .text(
+      `Session date: ${dateUtilities.formatDateUK(
+        new Date(sessionDetails.date)
+      )}`,
+      {
+        align: "right",
+      }
+    );
 
   doc
     .text(`Certificate generated: ${dateUtilities.formatDateUK(new Date())}`, {

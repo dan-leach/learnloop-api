@@ -237,9 +237,9 @@ const buildMailBody = (name, appURL, shortenedAppURL, data, seriesData) => {
 
   body += `
   </p><p style='font-size:1.5em'>View your feedback</p>
-  <p>Go to <a href='${appURL}/?view=${data.id}'>${shortenedAppURL}/?view=${data.id}</a> and enter your PIN (refer to session creation email, or <a href='${appURL}/?resetPIN=${data.id}'>reset your PIN</a>) to retrieve submitted feedback.<br>
+  <p>Go to <a href='${appURL}/feedback/view/${data.id}'>${shortenedAppURL}/feedback/view/${data.id}</a> and enter your PIN (refer to session creation email, or <a href='${appURL}/feedback/resetPIN/${data.id}'>reset your PIN</a>) to retrieve submitted feedback.<br>
   Please note, to avoid overloading your inbox, no further notifications will be sent for feedback submitted within the next 2 hours.</p>
-  <p><a href='${appURL}/?notifications=${data.id}'>Update your notification preferences</a> if you don't want to receive these emails.</p>
+  <p><a href='${appURL}/feedback/notifications/${data.id}'>Update your notification preferences</a> if you don't want to receive these emails.</p>
 `;
 
   return body;
