@@ -18,9 +18,9 @@ Db harmonisation v5.0 --> v6
 16. salt - remove and use to construct organisers
 17. datetime - no change
 
-Activate maintenance mode
-Download backup v5 tables
-Re-run GO
+Activate maintenance mode /
+Download backup v5 tables /
+Re-run GO /
 Check isLead and canEdit working correctly
 Test selection of sessions including subsessions and questions, using all different routes
 Alter interaction module on homepage
@@ -28,7 +28,7 @@ Add update notice
 Consider emails to recent users
 
 Update versioning to v6
-Remove GO route
+Remove GO routes
 Check all api changes committed
 Move existing www to legacy folder
 Deploy api as build version

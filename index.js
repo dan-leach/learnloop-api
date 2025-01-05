@@ -105,10 +105,27 @@ app.get("/qrcode", async (req, res) => {
  *
  * @returns {Object} 200 - JSON object containing the server's configuration.
  */
-app.get("/config", (req, res) => {
+app.get("/config", async (req, res) => {
   try {
     // Import the configuration file containing settings to be shared with the client
     const config = require("./config.json");
+
+    // Add the feedback count
+    const v4count = 5256; //include v4 in count
+    const {
+      dbConfig,
+      openDbConnection,
+    } = require("./modules/utilities/dbUtilities");
+    link = await openDbConnection(dbConfig);
+    const [fRows] = await link.execute(
+      `SELECT FORMAT(COUNT(*) + ${v4count}, 0) AS total_submissions FROM ${config.feedback.tables.tblSubmissions}`
+    );
+    config.feedback.count = fRows[0].total_submissions;
+    // Add the interaction count
+    const [iRows] = await link.execute(
+      `SELECT FORMAT(COUNT(*), 0) AS total_submissions FROM ${config.interaction.tables.tblSubmissions}`
+    );
+    config.interaction.count = iRows[0].total_submissions;
 
     // Send the configuration file as a JSON response
     res.json(config);
@@ -120,6 +137,9 @@ app.get("/config", (req, res) => {
       "Failed to load configuration settings",
       res
     );
+  } finally {
+    // Close the database connection if it was opened
+    if (link) await link.end();
   }
 });
 

@@ -30,7 +30,7 @@ const {
 } = require("../utilities/routeUtilities");
 
 ///////////////////////////////////
-router.get("/go", async (req, res) => {
+router.get("/go1", async (req, res) => {
   let link; // Database connection variable
   try {
     throw new Error("Disabled");
@@ -91,9 +91,112 @@ router.get("/go", async (req, res) => {
       );
     }
 
-    res.send(`Done 4`);
+    res.send(`Done 1`);
   } catch (error) {
-    handleError(error, error.statusCode, "feedback/go", "GO failed", res, true);
+    handleError(
+      error,
+      error.statusCode,
+      "feedback/go1",
+      "GO failed",
+      res,
+      true
+    );
+  } finally {
+    if (link) await link.end();
+  }
+});
+
+router.get("/go2", async (req, res) => {
+  let link; // Database connection variable
+  try {
+    throw new Error("Disabled");
+    // Open a connection to the database
+    link = await openDbConnection(dbConfig);
+    const [rows] = await link.execute(
+      "SELECT count FROM tbl_feedback_attendance_v5"
+    );
+    const countArray = rows.map((row) => row.count); // Extract 'count' values into an array
+
+    let count = 0;
+    for (let countStr of countArray) {
+      count++;
+      //if (count > 3) break;
+      //console.error("##########", count, idStr);
+      const [rows] = await link.execute(
+        `SELECT * FROM tbl_feedback_attendance_v5 WHERE count = ?`,
+        [countStr]
+      );
+
+      const attendee = rows[0];
+
+      await link.execute(
+        `INSERT INTO tbl_feedback_attendance_v6 VALUES (?, ?, ?, ?, ?)`,
+        [attendee.count, attendee.id, attendee.name, "", attendee.organisation]
+      );
+    }
+
+    res.send(`Done 2`);
+  } catch (error) {
+    handleError(
+      error,
+      error.statusCode,
+      "feedback/go2",
+      "GO failed",
+      res,
+      true
+    );
+  } finally {
+    if (link) await link.end();
+  }
+});
+
+router.get("/go3", async (req, res) => {
+  let link; // Database connection variable
+  try {
+    throw new Error("Disabled");
+    // Open a connection to the database
+    link = await openDbConnection(dbConfig);
+    const [rows] = await link.execute(
+      "SELECT count FROM tbl_feedback_submissions_v5"
+    );
+    const countArray = rows.map((row) => row.count); // Extract 'count' values into an array
+
+    let count = 0;
+    for (let countStr of countArray) {
+      count++;
+      //if (count > 3) break;
+      //console.error("##########", count, idStr);
+      const [rows] = await link.execute(
+        `SELECT * FROM tbl_feedback_submissions_v5 WHERE count = ?`,
+        [countStr]
+      );
+
+      const submission = rows[0];
+
+      await link.execute(
+        `INSERT INTO tbl_feedback_submissions_v6 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [
+          submission.count,
+          submission.id,
+          submission.positive,
+          submission.negative,
+          submission.questions,
+          submission.score,
+          submission.datetime,
+        ]
+      );
+    }
+
+    res.send(`Done 3`);
+  } catch (error) {
+    handleError(
+      error,
+      error.statusCode,
+      "feedback/go3",
+      "GO failed",
+      res,
+      true
+    );
   } finally {
     if (link) await link.end();
   }

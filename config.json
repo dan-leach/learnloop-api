@@ -132,6 +132,10 @@
           "max": 1
         }
       }
+    },
+    "tables": {
+      "tblSessions": "tbl_interaction_sessions_v5",
+      "tblSubmissions": "tbl_interaction_submissions_v5"
     }
   },
   "client": {
