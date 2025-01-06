@@ -1,38 +1,18 @@
-Db harmonisation v5.0 --> v6
-
-1. id - no change
-2. name - no change (but also use to construct organisers)
-3. email - remove and use to construct organisers
-4. title - no change
-5. date - no change
-6. multipleDate - no change
-7. questions - no change (but check some for compatibility)
-8. certificate - no change
-9. subsessions - no change
-10. isSubsession - no change
-11. notifications - remove and use to construct organisers
-12. lastSent - remove and use to construct organisers
-13. attendance - no change
-14. closed - no change
-15. pinHash - remove and use to construct organisers
-16. salt - remove and use to construct organisers
-17. datetime - no change
-
 Activate maintenance mode /
 Download backup v5 tables /
 Re-run GO /
-Check isLead and canEdit working correctly
-Test selection of sessions including subsessions and questions, using all different routes
-Alter interaction module on homepage
-Add update notice
-Consider emails to recent users
-
-Update versioning to v6
+Alter interaction module on homepage /
+Add update notice /
+Update versioning to v5.3
 Remove GO routes
 Check all api changes committed
 Move existing www to legacy folder
 Deploy api as build version
-Deploy v6 client as build version
-Final tests including mobile
+Deploy v5.3 client as build version
+Check isLead and canEdit working correctly
 Restrict CORS on api htaccess
+Check email links
+Test selection of sessions including subsessions and questions, using all different routes
+Final tests including mobile
 Remove maintenance mode
+Consider emails to recent users

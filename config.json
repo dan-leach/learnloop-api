@@ -1,6 +1,6 @@
 {
   "version": "5.3",
-  "devMode": true,
+  "devMode": false,
   "author": "Dan Leach",
   "web": "https://github.com/dan-leach",
   "repo": "https://github.com/dan-leach/learnloop/tree/v5",
@@ -47,9 +47,9 @@
       }
     },
     "tables": {
-      "tblSessions": "tbl_feedback_sessions_v6",
-      "tblSubmissions": "tbl_feedback_submissions_v6",
-      "tblAttendance": "tbl_feedback_attendance_v6"
+      "tblSessions": "tbl_feedback_sessions_v5_3",
+      "tblSubmissions": "tbl_feedback_submissions_v5_3",
+      "tblAttendance": "tbl_feedback_attendance_v5_3"
     }
   },
   "interaction": {
@@ -139,7 +139,7 @@
     }
   },
   "client": {
-    "url": "https://dev.LearnLoop.co.uk",
+    "url": "https://learnloop.co.uk",
     "isFocusView": false,
     "subsessionEmailPrompt": true,
     "regions": [
