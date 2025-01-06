@@ -126,9 +126,14 @@ async function selectFeedbackFromDatabase(id, link) {
 function organiseQuestionFeedback(questions, questionFeedback) {
   questions.forEach((question) => {
     question.responses = [];
-    question.options.forEach((option) => {
-      option.count = 0;
-    });
+    try {
+      question.options.forEach((option) => {
+        option.count = 0;
+      });
+    } catch (error) {
+      console.error("question.options.forEach error. question:", question);
+      throw error;
+    }
   });
 
   questionFeedback.forEach((responseSet) => {

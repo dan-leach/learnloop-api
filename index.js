@@ -178,7 +178,14 @@ app.use("*", (req, res) => {
   try {
     throw Object.assign(new Error("Incorrect API route"), { statusCode: 400 });
   } catch (error) {
-    handleError(error, error.statusCode, "*", "Wildcard catch", res);
+    handleError(
+      error,
+      error.statusCode,
+      req.baseUrl,
+      "Wildcard catch",
+      res,
+      false
+    );
   }
 });
 
