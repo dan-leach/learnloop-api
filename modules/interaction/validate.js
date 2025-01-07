@@ -26,6 +26,104 @@ const interestRules = [
     .withMessage("Email field must be a valid email address format."),
 ];
 
+/**
+ * Validation rules for the insertSession route
+ * @type {array}
+ */
+const insertSessionRules = [
+  check("title")
+    .notEmpty()
+    .withMessage("Session title must be provided.")
+    .isString()
+    .withMessage("Session title field must be data type [string].")
+    .escape(),
+
+  check("feedbackId")
+    .optional()
+    .isString()
+    .withMessage("Feedback ID field (if provided) must be data type [string].")
+    .escape(),
+
+  check("name")
+    .notEmpty()
+    .withMessage("Facilitator name must be provided.")
+    .isString()
+    .withMessage("Session title field must be data type [string].")
+    .escape(),
+
+  check("email")
+    .isEmail()
+    .withMessage("Email field must be a valid email address format."),
+];
+
+/**
+ * Validation rules for the updateSession route
+ * @type {array}
+ */
+const updateSessionRules = [
+  check("id")
+    .isString()
+    .withMessage("ID field must be data type [string].")
+    .escape(),
+
+  check("pin")
+    .isInt()
+    .withMessage("PIN field must be data type [integer].")
+    .escape(),
+
+  check("title")
+    .notEmpty()
+    .withMessage("Session title must be provided.")
+    .isString()
+    .withMessage("Session title field must be data type [string].")
+    .escape(),
+
+  check("feedbackId")
+    .optional()
+    .isString()
+    .withMessage("Feedback ID field (if provided) must be data type [string].")
+    .escape(),
+
+  check("name")
+    .notEmpty()
+    .withMessage("Facilitator name must be provided.")
+    .isString()
+    .withMessage("Session title field must be data type [string].")
+    .escape(),
+
+  check("email")
+    .isEmail()
+    .withMessage("Email field must be a valid email address format."),
+
+  check("slides")
+    .isArray()
+    .withMessage("Slides field must be data type [array]."),
+
+  check("slides.*.type")
+    .notEmpty()
+    .withMessage("Slide type must be provided.")
+    .isString()
+    .withMessage("Slide type field must be data type [string].")
+    .escape(),
+
+  check("slides.*.prompt")
+    .notEmpty()
+    .withMessage("Slide prompt must be provided.")
+    .isString()
+    .withMessage("Slide prompt field must be data type [string].")
+    .escape(),
+
+  check("slides.*.content")
+    .isObject()
+    .withMessage("Slide content field must be data type [object].")
+    .escape(),
+
+  check("slides.*.interaction")
+    .isObject()
+    .withMessage("Slide interaction field must be data type [object].")
+    .escape(),
+];
+
 // Middleware function to validate the request
 const validateRequest = (req, res, next) => {
   try {
@@ -47,5 +145,7 @@ const validateRequest = (req, res, next) => {
 
 module.exports = {
   interestRules,
+  insertSessionRules,
+  updateSessionRules,
   validateRequest,
 };
