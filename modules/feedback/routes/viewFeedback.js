@@ -131,6 +131,7 @@ function organiseQuestionFeedback(questions, questionFeedback) {
         option.count = 0;
       });
     } catch (error) {
+      //Added additional custom error logging to find and fix any v4 questions incompatible with v5
       console.error("question.options.forEach error. question:", question);
       throw error;
     }
