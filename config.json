@@ -1,6 +1,6 @@
 {
-  "version": "5.3",
-  "devMode": false,
+  "version": "6.0",
+  "devMode": true,
   "author": "Dan Leach",
   "web": "https://github.com/dan-leach",
   "repo": "https://github.com/dan-leach/learnloop/tree/v5",
@@ -139,7 +139,7 @@
     }
   },
   "client": {
-    "url": "https://learnloop.co.uk",
+    "url": "https://dev.learnloop.co.uk",
     "isFocusView": false,
     "subsessionEmailPrompt": true,
     "regions": [
@@ -420,8 +420,8 @@
     ]
   },
   "api": {
-    "url": "https://api.learnloop.co.uk/",
-    "imagesUrl": "https://api.learnloop.co.uk/interaction/uploads/img/",
+    "url": "https://dev.api.learnloop.co.uk/",
+    "imagesUrl": "https://dev.api.learnloop.co.uk/interaction/uploads/img/",
     "timeoutDuration": 15000,
     "showConsole": true,
     "notificationTimeoutHours": 2
