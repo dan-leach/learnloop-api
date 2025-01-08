@@ -112,13 +112,14 @@ app.get("/config", async (req, res) => {
 
     // Add the feedback count
     const v4count = 5256; //include v4 in count
+    const responseMultiplier = 3.246; //multiply by average number of responses (pos, neg, score, questions) per submission
     const {
       dbConfig,
       openDbConnection,
     } = require("./modules/utilities/dbUtilities");
     link = await openDbConnection(dbConfig);
     const [fRows] = await link.execute(
-      `SELECT FORMAT(COUNT(*) + ${v4count}, 0) AS total_submissions FROM ${config.feedback.tables.tblSubmissions}`
+      `SELECT FORMAT(((COUNT(*) + ${v4count})*${responseMultiplier}), 0) AS total_submissions FROM ${config.feedback.tables.tblSubmissions}`
     );
     config.feedback.count = fRows[0].total_submissions;
     // Add the interaction count

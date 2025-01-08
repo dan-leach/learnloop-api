@@ -134,8 +134,8 @@
       }
     },
     "tables": {
-      "tblSessions": "tbl_interaction_sessions_v5",
-      "tblSubmissions": "tbl_interaction_submissions_v5"
+      "tblSessions": "tbl_interaction_sessions_v6",
+      "tblSubmissions": "tbl_interaction_submissions_v6"
     }
   },
   "client": {

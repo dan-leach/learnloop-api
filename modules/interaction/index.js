@@ -16,7 +16,10 @@ const router = express.Router();
 const { matchedData } = require("express-validator");
 const validate = require("./validate");
 const { dbConfig, openDbConnection } = require("../utilities/dbUtilities");
-const { handleError } = require("../utilities/routeUtilities");
+const {
+  handleError,
+  decodeObjectStrings,
+} = require("../utilities/routeUtilities");
 
 /**
  * @async
@@ -142,10 +145,6 @@ router.post(
       // Get the validated and sanitized data from the request
       const data = matchedData(req);
 
-      //
-      console.error("data:", data);
-      //
-
       // Open a connection to the database
       link = await openDbConnection(dbConfig);
 
@@ -157,10 +156,6 @@ router.post(
 
       // Retrieve organiser associated with the session ID
       let organiser = (await getOrganisers(data.id, "interaction", link))[0];
-
-      //
-      console.error("organiser:", organiser);
-      //
 
       // Check if the provided PIN is valid for any organiser
       if (!pinIsValid(data.pin, organiser.salt, organiser.pinHash)) {
@@ -179,6 +174,73 @@ router.post(
         error.statusCode,
         "interaction/updateSession",
         "Failed to update session",
+        res
+      );
+    } finally {
+      // Close the database connection if it was opened
+      if (link) await link.end();
+    }
+  }
+);
+
+/**
+ * @async
+ * @route POST /interaction/loadDetailsHost
+ * @memberof module:interaction
+ * @summary Loads full session details for the host.
+ *
+ * @description This route validates the incoming request, checks the provided organiser's PIN for validity,
+ * and then returns the session details from the database. If the request fails at any step, an appropriate error message is returned.
+ *
+ * @requires ./validate - Module for defining validation rules and sanitizing request data.
+ * @requires ../utilities/pinUtilities - Utility functions for validating PINs.
+ * @requires ./routes/loadDetailsHost - Contains the logic for loading the session details.
+ *
+ * @param {object} req.body.data - The data containing the session ID and organiser's PIN.
+ * @returns {object} 200 - A success message indicating that the session was updated.
+ * @returns {object} 401 - Error message if the PIN is invalid.
+ * @returns {object} 500 - Error message if updating the session fails.
+ */
+router.post(
+  "/loadDetailsHost",
+  validate.loadDetailsHostRules, // Middleware for validating update session request data
+  validate.validateRequest, // Middleware for validating the request based on the rules
+  async (req, res) => {
+    let link; // Database connection variable
+    try {
+      // Get the validated and sanitized data from the request
+      const data = matchedData(req);
+
+      // Open a connection to the database
+      link = await openDbConnection(dbConfig);
+
+      // Import utility functions for getting organisers and validating PINs
+      const {
+        getOrganisers,
+        pinIsValid,
+      } = require("../utilities/pinUtilities");
+
+      // Retrieve organiser associated with the session ID
+      let organiser = (await getOrganisers(data.id, "interaction", link))[0];
+
+      // Check if the provided PIN is valid for any organiser
+      if (!pinIsValid(data.pin, organiser.salt, organiser.pinHash)) {
+        throw Object.assign(new Error("Invalid PIN"), { statusCode: 401 });
+      }
+
+      // Update the session with the provided data
+      const { loadDetailsHost } = require("./routes/loadDetailsHost");
+      let sessionDetails = await loadDetailsHost(link, data.id);
+
+      // Return the session details
+      sessionDetails = decodeObjectStrings(sessionDetails);
+      res.json(sessionDetails);
+    } catch (error) {
+      handleError(
+        error,
+        error.statusCode,
+        "interaction/loadDetailsHost",
+        "Failed to load session details",
         res
       );
     } finally {

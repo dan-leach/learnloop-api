@@ -115,12 +115,26 @@ const updateSessionRules = [
 
   check("slides.*.content")
     .isObject()
-    .withMessage("Slide content field must be data type [object].")
-    .escape(),
+    .withMessage("Slide content field must be data type [object]."),
 
   check("slides.*.interaction")
     .isObject()
-    .withMessage("Slide interaction field must be data type [object].")
+    .withMessage("Slide interaction field must be data type [object]."),
+];
+
+/**
+ * Validation rules for the updateSession route
+ * @type {array}
+ */
+const loadDetailsHostRules = [
+  check("id")
+    .isString()
+    .withMessage("ID field must be data type [string].")
+    .escape(),
+
+  check("pin")
+    .isInt()
+    .withMessage("PIN field must be data type [integer].")
     .escape(),
 ];
 
@@ -147,5 +161,6 @@ module.exports = {
   interestRules,
   insertSessionRules,
   updateSessionRules,
+  loadDetailsHostRules,
   validateRequest,
 };

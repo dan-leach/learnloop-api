@@ -12,7 +12,6 @@
  * @requires ../../utilities/idUtilities - Utility functions for ID generation.
  * @requires ../../utilities/pinUtilities - Utility functions for PIN generation and hashing.
  * @requires ../../utilities/mailUtilities - Utilities for sending email notifications.
- * @requires ../../utilities/dateUtilities - Utilities for formatting date objects.
  * @requires entities For decoding html entities
  *
  * @exports insertSession - Function for inserting a new session into the database and notifying organisers.
@@ -23,7 +22,6 @@ const config = require("../../../config.json");
 const idUtilities = require("../../utilities/idUtilities");
 const pinUtilities = require("../../utilities/pinUtilities");
 const mailUtilities = require("../../utilities/mailUtilities");
-const dateUtilities = require("../../utilities/dateUtilities");
 const { decode } = require("entities");
 
 /**
@@ -44,7 +42,7 @@ const { decode } = require("entities");
  */
 const insertSession = async (link, data) => {
   // Generate a unique session ID and pin
-  const id = await idUtilities.createUniqueId(link, "feedback");
+  const id = await idUtilities.createUniqueId(link, "interaction");
   const pin = pinUtilities.createPin();
   const salt = pinUtilities.createSalt();
   const organiser = {
