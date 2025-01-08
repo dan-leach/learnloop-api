@@ -123,7 +123,7 @@ const updateSessionRules = [
 ];
 
 /**
- * Validation rules for the updateSession route
+ * Validation rules for the loadDetailsHost route
  * @type {array}
  */
 const loadDetailsHostRules = [
@@ -136,6 +136,30 @@ const loadDetailsHostRules = [
     .isInt()
     .withMessage("PIN field must be data type [integer].")
     .escape(),
+];
+
+/**
+ * Validation rules for the updateStatus route
+ * @type {array}
+ */
+const updateStatusRules = [
+  check("id")
+    .isString()
+    .withMessage("ID field must be data type [string].")
+    .escape(),
+
+  check("pin")
+    .isInt()
+    .withMessage("PIN field must be data type [integer].")
+    .escape(),
+
+  check("slides.*.content")
+    .isObject()
+    .withMessage("Slide content field must be data type [object]."),
+
+  check("status")
+    .isObject()
+    .withMessage("Status field must be data type [object]."),
 ];
 
 // Middleware function to validate the request
@@ -162,5 +186,6 @@ module.exports = {
   insertSessionRules,
   updateSessionRules,
   loadDetailsHostRules,
+  updateStatusRules,
   validateRequest,
 };

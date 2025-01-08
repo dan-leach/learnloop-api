@@ -250,4 +250,70 @@ router.post(
   }
 );
 
+/**
+ * @async
+ * @route POST /interaction/updateStatus
+ * @memberof module:interaction
+ * @summary Updates session status.
+ *
+ * @description This route validates the incoming request, checks the provided organiser's PIN for validity,
+ * and then updates the session status in the database. If the request fails at any step, an appropriate error message is returned.
+ *
+ * @requires ./validate - Module for defining validation rules and sanitizing request data.
+ * @requires ../utilities/pinUtilities - Utility functions for validating PINs.
+ * @requires ./routes/updateStatus - Contains the logic for updating the session in the database and sending out emails to the organisers.
+ *
+ * @param {object} req.body.data - The data containing the session ID, status, and organiser's PIN.
+ * @returns {object} 200 - A success message indicating that the session was updated.
+ * @returns {object} 401 - Error message if the PIN is invalid.
+ * @returns {object} 500 - Error message if updating the session fails.
+ */
+router.post(
+  "/updateStatus",
+  validate.updateStatusRules, // Middleware for validating update session request data
+  validate.validateRequest, // Middleware for validating the request based on the rules
+  async (req, res) => {
+    let link; // Database connection variable
+    try {
+      // Get the validated and sanitized data from the request
+      const data = matchedData(req);
+
+      // Open a connection to the database
+      link = await openDbConnection(dbConfig);
+
+      // Import utility functions for getting organisers and validating PINs
+      const {
+        getOrganisers,
+        pinIsValid,
+      } = require("../utilities/pinUtilities");
+
+      // Retrieve organiser associated with the session ID
+      let organiser = (await getOrganisers(data.id, "interaction", link))[0];
+
+      // Check if the provided PIN is valid for any organiser
+      if (!pinIsValid(data.pin, organiser.salt, organiser.pinHash)) {
+        throw Object.assign(new Error("Invalid PIN"), { statusCode: 401 });
+      }
+
+      // Update the session with the provided data
+      const { updateStatus } = require("./routes/updateStatus");
+      await updateStatus(link, data.id, data.status);
+
+      // Respond with a success message
+      res.json({ message: "Session status updated" });
+    } catch (error) {
+      handleError(
+        error,
+        error.statusCode,
+        "interaction/updateStatus",
+        "Failed to update session status",
+        res
+      );
+    } finally {
+      // Close the database connection if it was opened
+      if (link) await link.end();
+    }
+  }
+);
+
 module.exports = router;
