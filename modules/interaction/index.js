@@ -554,4 +554,54 @@ router.post(
   }
 );
 
+/**
+ * @async
+ * @route POST /interaction/insertSubmission
+ * @memberof module:interaction
+ * @summary Inserts a new submission.
+ *
+ * @description This route validates the incoming request and then inserts a new submission in the database.
+ * If the request fails at any step, an appropriate error message is returned.
+ *
+ * @requires ./validate - Module for defining validation rules and sanitizing request data.
+ * @requires ./routes/insertSubmission - Contains the logic for inserting the submission in the database.
+ *
+ * @param {object} req.body.data - The data containing the session ID, slideIndex and submission.
+ * @returns {object} 200 - A success message indicating that the submission was inserted.
+ * @returns {object} 500 - Error message if updating the session fails.
+ */
+router.post(
+  "/insertSubmission",
+  validate.insertSubmissionRules, // Middleware for validating update session request data
+  validate.validateRequest, // Middleware for validating the request based on the rules
+  async (req, res) => {
+    let link; // Database connection variable
+    try {
+      // Get the validated and sanitized data from the request
+      const data = matchedData(req);
+
+      // Open a connection to the database
+      link = await openDbConnection(dbConfig);
+
+      // Update the session with the provided data
+      const { insertSubmission } = require("./routes/insertSubmission");
+      await insertSubmission(link, data);
+
+      // Respond with a success message
+      res.json({ message: "Response submitted" });
+    } catch (error) {
+      handleError(
+        error,
+        error.statusCode,
+        "interaction/insertSubmission",
+        "Failed to submit response",
+        res
+      );
+    } finally {
+      // Close the database connection if it was opened
+      if (link) await link.end();
+    }
+  }
+);
+
 module.exports = router;

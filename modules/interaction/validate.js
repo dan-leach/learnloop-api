@@ -15,6 +15,7 @@
 
 const { check, validationResult } = require("express-validator");
 const { handleError } = require("../utilities/routeUtilities");
+const { escape } = require("mysql");
 
 /**
  * Validation rules for the interest route
@@ -181,6 +182,23 @@ const fetchDetailsJoinRules = [
     .escape(),
 ];
 
+/**
+ * Validation rules for the insertSubmission route
+ * @type {array}
+ */
+const insertSubmissionRules = [
+  check("id")
+    .isString()
+    .withMessage("ID field must be data type [string].")
+    .escape(),
+
+  check("slideIndex")
+    .isInt()
+    .withMessage("Slide index field must be data type [integer]."),
+
+  check("response").exists().withMessage("Response cannot be empty.").escape(),
+];
+
 // Middleware function to validate the request
 const validateRequest = (req, res, next) => {
   try {
@@ -208,5 +226,6 @@ module.exports = {
   updateStatusRules,
   fetchNewSubmissionsRules,
   fetchDetailsJoinRules,
+  insertSubmissionRules,
   validateRequest,
 };
