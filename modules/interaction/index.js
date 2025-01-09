@@ -674,62 +674,91 @@ router.post(
   }
 );
 
-/////////////////////////////////////////
+/**
+ * @async
+ * @route POST /interaction/uploadImage
+ * @memberof module:interaction
+ * @summary Uploads a new image.
+ *
+ * @description This route uploads a new image and returns the folder and filename to the client.
+ * If the request fails at any step, an appropriate error message is returned.
+ *
+ * @requires ./routes/uploadImage - Contains the logic for uploading the image.
+ *
+ * @param {object} formData - The data containing the image file.
+ * @returns {object} 200 - The folder and filename of the uploaded image.
+ * @returns {object} 500 - Error message if uploading the image fails.
+ */
+router.post("/uploadImage", (req, res) => {
+  try {
+    const { uploadImage } = require("./routes/uploadImage");
+    uploadImage.single("image")(req, res, (err) => {
+      if (err) {
+        return res.status(400).json({
+          error: true,
+          msg: err.message,
+        });
+      }
 
-const multer = require("multer");
-const path = require("path");
-const fs = require("fs");
+      if (!req.file) {
+        throw Object.assign(
+          new Error("No file uploaded or file type not supported"),
+          { statusCode: 400 }
+        );
+      }
 
-// Define storage settings for multer
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadPath = path.join(__dirname, "uploads/images");
-    // Ensure the directory exists
-    if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath, { recursive: true });
-    }
-    cb(null, uploadPath);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    const extension = path.extname(file.originalname);
-    cb(null, `${file.fieldname}-${uniqueSuffix}${extension}`);
-  },
-});
-
-// Set up multer
-const upload = multer({
-  storage,
-  limits: { fileSize: 4 * 1024 * 1024 }, // Limit file size to 4MB
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|gif/;
-    const mimetype = allowedTypes.test(file.mimetype);
-    const extname = allowedTypes.test(
-      path.extname(file.originalname).toLowerCase()
-    );
-    if (mimetype && extname) {
-      return cb(null, true);
-    }
-    cb(new Error("Only images are allowed (jpeg, jpg, png, gif)."));
-  },
-});
-
-// Define the route
-router.post("/uploadImage", upload.single("image"), (req, res) => {
-  console.error("new uploadImage");
-  if (!req.file) {
-    return res.status(400).json({
-      error: true,
-      msg: "No file uploaded or file type not supported.",
+      res.json({
+        folder: new Date().toISOString().slice(0, 7),
+        filename: req.file.filename,
+      });
     });
+  } catch (error) {
+    handleError(
+      error,
+      error.statusCode,
+      "interaction/uploadImage",
+      "Failed to upload image",
+      res
+    );
   }
-
-  const filePath = `/uploads/images/${req.file.filename}`;
-  res.status(200).json({
-    error: false,
-    msg: "Image uploaded successfully!",
-    src: filePath,
-  });
 });
+
+/**
+ * @async
+ * @route POST /interaction/fetchImage
+ * @memberof module:interaction
+ * @summary Fetches an image.
+ *
+ * @description This route fetches an image.
+ *
+ * @requires ./routes/fetchImage - Contains the logic for fetching the image.
+ *
+ * @param {object} data - The including the image folder and filename.
+ * @returns {file} 200 - The requested image.
+ * @returns {object} 500 - Error message if fetching the image fails.
+ */
+router.get(
+  "/fetchImage",
+  validate.fetchImageRules, // Middleware for validating update session request data
+  validate.validateRequest, // Middleware for validating the request based on the rules
+  async (req, res) => {
+    try {
+      // Get the validated and sanitized data from the request
+      const data = matchedData(req);
+
+      // Update the session with the provided data
+      const { fetchImage } = require("./routes/fetchImage");
+      await fetchImage(data, res);
+    } catch (error) {
+      handleError(
+        error,
+        error.statusCode,
+        "interaction/fetchImage",
+        "Failed to fetch image",
+        res
+      );
+    }
+  }
+);
 
 module.exports = router;

@@ -421,7 +421,8 @@
   },
   "api": {
     "url": "https://dev.api.learnloop.co.uk/",
-    "imagesUrl": "https://dev.api.learnloop.co.uk/interaction/uploads/img/",
+    "uploadImageUrl": "https://dev.api.learnloop.co.uk/interaction/uploadImage/",
+    "fetchImageUrl": "https://dev.api.learnloop.co.uk/interaction/fetchImage/",
     "timeoutDuration": 15000,
     "showConsole": true,
     "notificationTimeoutHours": 2

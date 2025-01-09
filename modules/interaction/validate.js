@@ -199,6 +199,22 @@ const insertSubmissionRules = [
   check("response").exists().withMessage("Response cannot be empty.").escape(),
 ];
 
+/**
+ * Validation rules for the fetchImage route
+ * @type {array}
+ */
+const fetchImageRules = [
+  check("folder")
+    .isString()
+    .withMessage("Image folder field must be data type [string].")
+    .escape(),
+
+  check("filename")
+    .isString()
+    .withMessage("Image filename field must be data type [string].")
+    .escape(),
+];
+
 // Middleware function to validate the request
 const validateRequest = (req, res, next) => {
   try {
@@ -227,5 +243,6 @@ module.exports = {
   fetchNewSubmissionsRules,
   fetchDetailsJoinRules,
   insertSubmissionRules,
+  fetchImageRules,
   validateRequest,
 };
