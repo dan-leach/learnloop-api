@@ -316,4 +316,140 @@ router.post(
   }
 );
 
+/**
+ * @async
+ * @route POST /interaction/fetchSubmissionCount
+ * @memberof module:interaction
+ * @summary Returns a count of the submissions associated with a particular interaction session id.
+ *
+ * @description This route validates the incoming request, checks the provided organiser's PIN for validity,
+ * and then returns the submission count matching the given session id. If the request fails at any step,
+ * an appropriate error message is returned.
+ *
+ * @requires ./validate - Module for defining validation rules and sanitizing request data.
+ * @requires ../utilities/pinUtilities - Utility functions for validating PINs.
+ * @requires ./routes/fetchSubmissionCount - Contains the logic for fetching the count.
+ *
+ * @param {object} req.body.data - The data containing the session ID and PIN.
+ * @returns {integer} 200 - The submission count.
+ * @returns {object} 401 - Error message if the PIN is invalid.
+ * @returns {object} 500 - Error message if retrieving the count fails.
+ */
+router.post(
+  "/fetchSubmissionCount",
+  validate.loadDetailsHostRules, // Middleware for validating fetch request data
+  validate.validateRequest, // Middleware for validating the request based on the rules
+  async (req, res) => {
+    let link; // Database connection variable
+    try {
+      // Get the validated and sanitized data from the request
+      const data = matchedData(req);
+
+      // Open a connection to the database
+      link = await openDbConnection(dbConfig);
+
+      // Import utility functions for getting organisers and validating PINs
+      const {
+        getOrganisers,
+        pinIsValid,
+      } = require("../utilities/pinUtilities");
+
+      // Retrieve organiser associated with the session ID
+      let organiser = (await getOrganisers(data.id, "interaction", link))[0];
+
+      // Check if the provided PIN is valid for any organiser
+      if (!pinIsValid(data.pin, organiser.salt, organiser.pinHash)) {
+        throw Object.assign(new Error("Invalid PIN"), { statusCode: 401 });
+      }
+
+      // Retrieve the submission count
+      const { fetchSubmissionCount } = require("./routes/fetchSubmissionCount");
+      let submissionCount = await fetchSubmissionCount(link, data.id);
+
+      // Return the submission count
+      res.json(submissionCount);
+    } catch (error) {
+      handleError(
+        error,
+        error.statusCode,
+        "interaction/fetchSubmissionCount",
+        "Failed to load submission count",
+        res
+      );
+    } finally {
+      // Close the database connection if it was opened
+      if (link) await link.end();
+    }
+  }
+);
+
+/**
+ * @async
+ * @route POST /interaction/fetchNewSubmissions
+ * @memberof module:interaction
+ * @summary Loads submissions later than the previously latest loaded submission.
+ *
+ * @description This route validates the incoming request, checks the provided organiser's PIN for validity,
+ * and then returns the submissions with an ID greater than that provided with the request. If there are no new
+ * submissions since the last check, an empty array is returned. If the request fails at any step, an appropriate
+ * error message is returned.
+ *
+ * @requires ./validate - Module for defining validation rules and sanitizing request data.
+ * @requires ../utilities/pinUtilities - Utility functions for validating PINs.
+ * @requires ./routes/fetchNewSubmissions - Contains the logic for loading the submissions.
+ *
+ * @param {object} req.body.data - The data containing the session ID, PIN, slideIndex and lastSubmissionId.
+ * @returns {array} 200 - An array of submissions.
+ * @returns {object} 401 - Error message if the PIN is invalid.
+ * @returns {object} 500 - Error message if retrieving the submissions fails.
+ */
+router.post(
+  "/fetchNewSubmissions",
+  validate.fetchNewSubmissionsRules, // Middleware for validating fetch request data
+  validate.validateRequest, // Middleware for validating the request based on the rules
+  async (req, res) => {
+    let link; // Database connection variable
+    try {
+      // Get the validated and sanitized data from the request
+      const data = matchedData(req);
+
+      // Open a connection to the database
+      link = await openDbConnection(dbConfig);
+
+      // Import utility functions for getting organisers and validating PINs
+      const {
+        getOrganisers,
+        pinIsValid,
+      } = require("../utilities/pinUtilities");
+
+      // Retrieve organiser associated with the session ID
+      let organiser = (await getOrganisers(data.id, "interaction", link))[0];
+
+      // Check if the provided PIN is valid for any organiser
+      if (!pinIsValid(data.pin, organiser.salt, organiser.pinHash)) {
+        throw Object.assign(new Error("Invalid PIN"), { statusCode: 401 });
+      }
+
+      // Retrieve the new submissions
+      const { fetchNewSubmissions } = require("./routes/fetchNewSubmissions");
+      let newSubmissions = await fetchNewSubmissions(link, data);
+
+      // Return the new submissions
+      newSubmissions = decodeObjectStrings(newSubmissions);
+      res.json(newSubmissions);
+    } catch (error) {
+      handleError(
+        error,
+        error.statusCode,
+        "interaction/fetchNewSubmissions",
+        "Failed to load new submissions",
+        res
+      );
+    } finally {
+      // Close the database connection if it was opened
+      if (link) await link.end();
+    }
+  }
+);
+
 module.exports = router;

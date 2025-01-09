@@ -66,10 +66,7 @@ const updateSessionRules = [
     .withMessage("ID field must be data type [string].")
     .escape(),
 
-  check("pin")
-    .isInt()
-    .withMessage("PIN field must be data type [integer].")
-    .escape(),
+  check("pin").isInt().withMessage("PIN field must be data type [integer]."),
 
   check("title")
     .notEmpty()
@@ -132,10 +129,7 @@ const loadDetailsHostRules = [
     .withMessage("ID field must be data type [string].")
     .escape(),
 
-  check("pin")
-    .isInt()
-    .withMessage("PIN field must be data type [integer].")
-    .escape(),
+  check("pin").isInt().withMessage("PIN field must be data type [integer]."),
 ];
 
 /**
@@ -148,10 +142,7 @@ const updateStatusRules = [
     .withMessage("ID field must be data type [string].")
     .escape(),
 
-  check("pin")
-    .isInt()
-    .withMessage("PIN field must be data type [integer].")
-    .escape(),
+  check("pin").isInt().withMessage("PIN field must be data type [integer]."),
 
   check("slides.*.content")
     .isObject()
@@ -160,6 +151,27 @@ const updateStatusRules = [
   check("status")
     .isObject()
     .withMessage("Status field must be data type [object]."),
+];
+
+/**
+ * Validation rules for the fetchNewSubmissions route
+ * @type {array}
+ */
+const fetchNewSubmissionsRules = [
+  check("id")
+    .isString()
+    .withMessage("ID field must be data type [string].")
+    .escape(),
+
+  check("pin").isInt().withMessage("PIN field must be data type [integer]."),
+
+  check("slideIndex")
+    .isInt()
+    .withMessage("Slide index field must be data type [integer]."),
+
+  check("lastSubmissionId")
+    .isInt()
+    .withMessage("Last submission ID field must be data type [integer]."),
 ];
 
 // Middleware function to validate the request
@@ -187,5 +199,6 @@ module.exports = {
   updateSessionRules,
   loadDetailsHostRules,
   updateStatusRules,
+  fetchNewSubmissionsRules,
   validateRequest,
 };
