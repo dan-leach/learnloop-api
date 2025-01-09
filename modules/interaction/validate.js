@@ -120,10 +120,10 @@ const updateSessionRules = [
 ];
 
 /**
- * Validation rules for the loadDetailsHost route
+ * Validation rules for the fetchDetailsHost route
  * @type {array}
  */
-const loadDetailsHostRules = [
+const fetchDetailsHostRules = [
   check("id")
     .isString()
     .withMessage("ID field must be data type [string].")
@@ -143,10 +143,6 @@ const updateStatusRules = [
     .escape(),
 
   check("pin").isInt().withMessage("PIN field must be data type [integer]."),
-
-  check("slides.*.content")
-    .isObject()
-    .withMessage("Slide content field must be data type [object]."),
 
   check("status")
     .isObject()
@@ -174,6 +170,17 @@ const fetchNewSubmissionsRules = [
     .withMessage("Last submission ID field must be data type [integer]."),
 ];
 
+/**
+ * Validation rules for the fetchDetailsJoin route
+ * @type {array}
+ */
+const fetchDetailsJoinRules = [
+  check("id")
+    .isString()
+    .withMessage("ID field must be data type [string].")
+    .escape(),
+];
+
 // Middleware function to validate the request
 const validateRequest = (req, res, next) => {
   try {
@@ -197,8 +204,9 @@ module.exports = {
   interestRules,
   insertSessionRules,
   updateSessionRules,
-  loadDetailsHostRules,
+  fetchDetailsHostRules,
   updateStatusRules,
   fetchNewSubmissionsRules,
+  fetchDetailsJoinRules,
   validateRequest,
 };

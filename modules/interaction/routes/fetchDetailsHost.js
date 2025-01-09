@@ -1,5 +1,5 @@
 /**
- * @module loadDetailsHost
+ * @module fetchDetailsHost
  * @summary Module for loading session details prior to updates or when hosting a session.
  *
  * @description This module provides functionality for retrieving session details
@@ -7,15 +7,15 @@
  *
  * @requires ../../../config.json - Configuration file containing database table settings.
  *
- * @exports loadDetailsHost - Main function for loading session details.
+ * @exports fetchDetailsHost - Main function for loading session details.
  */
 
 const config = require("../../../config.json");
 
 /**
  * @async
- * @function loadDetailsHost
- * @memberof module:loadDetailsHost
+ * @function fetchDetailsHost
+ * @memberof module:fetchDetailsHost
  * @summary Fetches and processes a session's details.
  *
  * @description This function retrieves a session's details from the database and removes sensitive data before returning.
@@ -25,7 +25,7 @@ const config = require("../../../config.json");
  * @returns {Promise<object>} - Resolves with the processed session object.
  * @throws {Error} - Throws an error if the session cannot be retrieved or processed.
  */
-const loadDetailsHost = async (link, id) => {
+const fetchDetailsHost = async (link, id) => {
   const session = await selectSessionDetails(link, id);
 
   session.name = session.organisers[0].name;
@@ -38,7 +38,7 @@ const loadDetailsHost = async (link, id) => {
 /**
  * @async
  * @function selectSessionDetails
- * @memberof module:loadDetailsHost
+ * @memberof module:fetchDetailsHost
  * @summary Retrieves session details from the database.
  *
  * @description Executes a SQL query to fetch session details by ID. Parses JSON fields for organisers,
@@ -67,4 +67,4 @@ const selectSessionDetails = async (link, id) => {
   throw Object.assign(new Error("Session not found"), { statusCode: 400 });
 };
 
-module.exports = { loadDetailsHost };
+module.exports = { fetchDetailsHost };

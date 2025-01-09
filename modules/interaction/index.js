@@ -185,7 +185,7 @@ router.post(
 
 /**
  * @async
- * @route POST /interaction/loadDetailsHost
+ * @route POST /interaction/fetchDetailsHost
  * @memberof module:interaction
  * @summary Loads full session details for the host.
  *
@@ -194,16 +194,16 @@ router.post(
  *
  * @requires ./validate - Module for defining validation rules and sanitizing request data.
  * @requires ../utilities/pinUtilities - Utility functions for validating PINs.
- * @requires ./routes/loadDetailsHost - Contains the logic for loading the session details.
+ * @requires ./routes/fetchDetailsHost - Contains the logic for loading the session details.
  *
  * @param {object} req.body.data - The data containing the session ID and organiser's PIN.
- * @returns {object} 200 - A success message indicating that the session was updated.
+ * @returns {object} 200 - The session details object.
  * @returns {object} 401 - Error message if the PIN is invalid.
- * @returns {object} 500 - Error message if updating the session fails.
+ * @returns {object} 500 - Error message if retrieving the session details fails.
  */
 router.post(
-  "/loadDetailsHost",
-  validate.loadDetailsHostRules, // Middleware for validating update session request data
+  "/fetchDetailsHost",
+  validate.fetchDetailsHostRules, // Middleware for validating session request data
   validate.validateRequest, // Middleware for validating the request based on the rules
   async (req, res) => {
     let link; // Database connection variable
@@ -229,8 +229,8 @@ router.post(
       }
 
       // Update the session with the provided data
-      const { loadDetailsHost } = require("./routes/loadDetailsHost");
-      let sessionDetails = await loadDetailsHost(link, data.id);
+      const { fetchDetailsHost } = require("./routes/fetchDetailsHost");
+      let sessionDetails = await fetchDetailsHost(link, data.id);
 
       // Return the session details
       sessionDetails = decodeObjectStrings(sessionDetails);
@@ -239,7 +239,7 @@ router.post(
       handleError(
         error,
         error.statusCode,
-        "interaction/loadDetailsHost",
+        "interaction/fetchDetailsHost",
         "Failed to load session details",
         res
       );
@@ -337,7 +337,7 @@ router.post(
  */
 router.post(
   "/fetchSubmissionCount",
-  validate.loadDetailsHostRules, // Middleware for validating fetch request data
+  validate.fetchDetailsHostRules, // Middleware for validating fetch request data
   validate.validateRequest, // Middleware for validating the request based on the rules
   async (req, res) => {
     let link; // Database connection variable
@@ -443,6 +443,108 @@ router.post(
         error.statusCode,
         "interaction/fetchNewSubmissions",
         "Failed to load new submissions",
+        res
+      );
+    } finally {
+      // Close the database connection if it was opened
+      if (link) await link.end();
+    }
+  }
+);
+
+/**
+ * @async
+ * @route POST /interaction/fetchDetailsJoin
+ * @memberof module:interaction
+ * @summary Loads session details for attendees.
+ *
+ * @description This route validates the incoming request and then returns the session details from the database,
+ * excluding the sensitive organiser details. If the request fails at any step, an appropriate error message is returned.
+ *
+ * @requires ./validate - Module for defining validation rules and sanitizing request data.
+ * @requires ./routes/fetchDetailsHost - Contains the logic for loading the session details.
+ *
+ * @param {object} req.body.data - The data containing the session ID.
+ * @returns {object} 200 - The session details object.
+ * @returns {object} 500 - Error message if retrieving the session details fails.
+ */
+router.post(
+  "/fetchDetailsJoin",
+  validate.fetchDetailsJoinRules, // Middleware for validating session request data
+  validate.validateRequest, // Middleware for validating the request based on the rules
+  async (req, res) => {
+    let link; // Database connection variable
+    try {
+      // Get the validated and sanitized data from the request
+      const data = matchedData(req);
+
+      // Open a connection to the database
+      link = await openDbConnection(dbConfig);
+
+      // Update the session with the provided data
+      const { fetchDetailsHost } = require("./routes/fetchDetailsHost");
+      let sessionDetails = await fetchDetailsHost(link, data.id);
+
+      // Return the session details
+      sessionDetails = decodeObjectStrings(sessionDetails);
+      res.json(sessionDetails);
+    } catch (error) {
+      handleError(
+        error,
+        error.statusCode,
+        "interaction/fetchDetailsJoin",
+        "Failed to load session details",
+        res
+      );
+    } finally {
+      // Close the database connection if it was opened
+      if (link) await link.end();
+    }
+  }
+);
+
+/**
+ * @async
+ * @route POST /interaction/fetchStatus
+ * @memberof module:interaction
+ * @summary Loads session status for attendees.
+ *
+ * @description This route validates the incoming request and then returns the session status from the database.
+ * If the request fails at any step, an appropriate error message is returned.
+ *
+ * @requires ./validate - Module for defining validation rules and sanitizing request data.
+ * @requires ./routes/fetchStatus - Contains the logic for loading the session status.
+ *
+ * @param {object} req.body.data - The data containing the session ID.
+ * @returns {object} 200 - The session status object.
+ * @returns {object} 500 - Error message if retrieving the session status fails.
+ */
+router.post(
+  "/fetchStatus",
+  validate.fetchDetailsJoinRules, // Middleware for validating session request data
+  validate.validateRequest, // Middleware for validating the request based on the rules
+  async (req, res) => {
+    let link; // Database connection variable
+    try {
+      // Get the validated and sanitized data from the request
+      const data = matchedData(req);
+
+      // Open a connection to the database
+      link = await openDbConnection(dbConfig);
+
+      // Update the session with the provided data
+      const { fetchStatus } = require("./routes/fetchStatus");
+      let status = await fetchStatus(link, data.id);
+
+      // Return the session details
+      status = decodeObjectStrings(status);
+      res.json(status);
+    } catch (error) {
+      handleError(
+        error,
+        error.statusCode,
+        "interaction/fetchStatus",
+        "Failed to load session status",
         res
       );
     } finally {
