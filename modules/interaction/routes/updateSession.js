@@ -56,7 +56,8 @@ const updateSession = async (link, data) => {
   await updateSessionInDatabase(link, data, organiser, status);
 
   //deactivate the old submissions which may no longer be appropriate for the slide
-  deactivateOldSubmissions(link, data.id);
+  const { deactivateSubmissions } = require("./deactivateSubmissions");
+  await deactivateSubmissions(link, data.id);
 
   return true;
 };
@@ -139,28 +140,6 @@ const updateSessionInDatabase = async (link, data, organiser, status) => {
     status,
     id,
   ]);
-};
-
-/**
- * @async
- * @function deactivateOldSubmissions
- * @memberof module:updateSession
- * @summary Sets the active parameter for old submissions to false.
- *
- * @description Deactivates submissions made prior to the session update which may no longer
- * be appropriate for the slides.
- *
- * @param {Object} link - The MySQL connection object used to execute queries.
- * @param {string} id - The session ID for which submissions are to be deactivated.
- * @returns {Promise<void>} - Resolves when the submissions have been deactivated in the database.
- * @throws {Error} - Throws an error if the query execution fails.
- */
-const deactivateOldSubmissions = async (link, id) => {
-  // Execute the query with the provided id
-  await link.execute(
-    `UPDATE ${config.interaction.tables.tblSubmissions} SET active = ? WHERE id = ? AND active = ?`,
-    [false, id, true]
-  );
 };
 
 module.exports = {

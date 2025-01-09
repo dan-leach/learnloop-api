@@ -1,4 +1,2 @@
-Next: fetchNewSubmissions
-
 Before deploy:
 1. reactivate 500 error email notifications in routeUtilities
