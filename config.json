@@ -62,13 +62,25 @@
     "create": {
       "slides": {
         "types": {
-          "singleChoice": {
-            "name": "Single choice",
-            "id": "singleChoice",
+          "trueFalse": {
+            "name": "True / false",
+            "id": "trueFalse",
             "isInteractive": true,
+            "defaultOptions": [
+              {
+                "text": "true",
+                "correct": false,
+                "incorrect": false
+              },
+              {
+                "text": "false",
+                "correct": false,
+                "incorrect": false
+              }
+            ],
             "settings": {
               "charts": ["bar", "doughnut"],
-              "optionsLimit": 10,
+              "optionsLimit": 2,
               "submissionLimit": 1,
               "hideResponses": false
             }
