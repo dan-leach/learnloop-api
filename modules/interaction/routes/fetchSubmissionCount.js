@@ -22,8 +22,8 @@ const config = require("../../../config.json");
  */
 const fetchSubmissionCount = async (link, id) => {
   const [rows] = await link.execute(
-    `SELECT COUNT(*) AS submission_count FROM ${config.interaction.tables.tblSubmissions} WHERE sessionId = ?`,
-    [id]
+    `SELECT COUNT(*) AS submission_count FROM ${config.interaction.tables.tblSubmissions} WHERE sessionId = ? AND active = ?`,
+    [id, true]
   );
 
   return rows[0].submission_count;

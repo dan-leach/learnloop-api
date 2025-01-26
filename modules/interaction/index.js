@@ -655,7 +655,7 @@ router.post(
       const {
         deactivateSubmissions,
       } = require("./routes/deactivateSubmissions");
-      await deactivateSubmissions(link, data);
+      await deactivateSubmissions(link, data.id);
 
       // Respond with a success message
       res.json({ message: "Submissions cleared" });

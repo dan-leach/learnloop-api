@@ -25,7 +25,7 @@ const config = require("../../../config.json");
 const deactivateSubmissions = async (link, id) => {
   // Execute the query with the provided id
   await link.execute(
-    `UPDATE ${config.interaction.tables.tblSubmissions} SET active = ? WHERE id = ? AND active = ?`,
+    `UPDATE ${config.interaction.tables.tblSubmissions} SET active = ? WHERE sessionId = ? AND active = ?`,
     [false, id, true]
   );
 };
