@@ -58,9 +58,9 @@ const selectSessionDetails = async (link, id) => {
   if (rows.length > 0) {
     const session = rows[0];
 
-    ["organisers", "slides", "status"].forEach((field) => {
-      if (session[field]) session[field] = JSON.parse(session[field]);
-    });
+    session.organisers = JSON.parse(session.organisers);
+    session.slides = JSON.parse(session.slides);
+    session.status = JSON.parse(session.status);
 
     return session;
   }
