@@ -40,7 +40,9 @@ const validateRequest = (req, res, next) => {
       500,
       "validateRequest",
       "Failed to validate request",
-      res
+      res,
+      false,
+      [JSON.stringify(req.body)]
     );
   }
 };

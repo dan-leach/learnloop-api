@@ -51,9 +51,10 @@ router.post(
   validate.validateRequest, // Middleware for validating the request based on the rules
   async (req, res) => {
     let link; // Database connection variable
+    let data;
     try {
       // Get the validated and sanitized data from the request
-      const data = matchedData(req);
+      data = matchedData(req);
 
       // Open a connection to the database
       link = await openDbConnection(dbConfig);
@@ -70,7 +71,9 @@ router.post(
         error.statusCode,
         "feedback/insertSession",
         "Failed to create session",
-        res
+        res,
+        false,
+        [JSON.stringify(data)]
       );
     } finally {
       // Close the database connection if it was opened
@@ -104,9 +107,10 @@ router.post(
   validate.validateRequest, // Middleware for validating the request based on the rules
   async (req, res) => {
     let link; // Database connection variable
+    let data;
     try {
       // Get the validated and sanitized data from the request
-      const data = matchedData(req);
+      data = matchedData(req);
 
       // Open a connection to the database
       link = await openDbConnection(dbConfig);
@@ -172,12 +176,15 @@ router.post(
       }
       res.json(session);
     } catch (error) {
+      delete data.pin; // Remove the pin from the error message
       handleError(
         error,
         error.statusCode,
         "feedback/loadUpdateSession",
         "Failed to load session details",
-        res
+        res,
+        false,
+        [JSON.stringify(data)]
       );
     } finally {
       // Close the database connection if it was opened
@@ -211,9 +218,10 @@ router.post(
   validate.validateRequest, // Middleware for validating the request based on the rules
   async (req, res) => {
     let link; // Database connection variable
+    let data;
     try {
       // Get the validated and sanitized data from the request
-      const data = matchedData(req);
+      data = matchedData(req);
 
       // Open a connection to the database
       link = await openDbConnection(dbConfig);
@@ -266,12 +274,15 @@ router.post(
       // Respond with a success message
       res.json({ message: "The session was updated.", sendMailFails });
     } catch (error) {
+      delete data.pin; // Remove the pin from the error message
       handleError(
         error,
         error.statusCode,
         "feedback/updateSession",
         "Failed to update session",
-        res
+        res,
+        false,
+        [JSON.stringify(data)]
       );
     } finally {
       // Close the database connection if it was opened
@@ -308,9 +319,10 @@ router.post(
   validate.validateRequest, // Middleware for validating the request based on the rules
   async (req, res) => {
     let link; // Database connection variable
+    let data;
     try {
       // Get the validated and sanitized data from the request
-      const data = matchedData(req);
+      data = matchedData(req);
 
       // Open a connection to the database
       link = await openDbConnection(dbConfig);
@@ -360,12 +372,15 @@ router.post(
       // Respond with a success message
       res.json({ message: "The session was closed.", sendMailFails });
     } catch (error) {
+      delete data.pin; // Remove the pin from the error message
       handleError(
         error,
         error.statusCode,
         "feedback/closeSession",
         "Failed to close session",
-        res
+        res,
+        false,
+        [JSON.stringify(data)]
       );
     } finally {
       // Close the database connection if it was opened
@@ -398,9 +413,10 @@ router.post(
   validate.validateRequest, // Middleware for validating the request based on the rules
   async (req, res) => {
     let link; // Database connection variable
+    let data;
     try {
       // Get the validated and sanitized data from the request
-      const data = matchedData(req);
+      data = matchedData(req);
 
       // Open a connection to the database
       link = await openDbConnection(dbConfig);
@@ -430,7 +446,9 @@ router.post(
         error.statusCode,
         "feedback/resetPin",
         "Failed to reset pin",
-        res
+        res,
+        false,
+        [JSON.stringify(data)]
       );
     } finally {
       // Close the database connection if it was opened
@@ -467,9 +485,10 @@ router.post(
   validate.validateRequest, // Middleware for validating the request based on the rules
   async (req, res) => {
     let link; // Database connection variable
+    let data;
     try {
       // Get the validated and sanitized data from the request
-      const data = matchedData(req);
+      data = matchedData(req);
 
       // Open a connection to the database
       link = await openDbConnection(dbConfig);
@@ -508,12 +527,15 @@ router.post(
         sendMailFails,
       });
     } catch (error) {
+      delete data.pin; // Remove the pin from the error message
       handleError(
         error,
         error.statusCode,
         "feedback/updateNotificationPreferences",
         "Failed to update notification preferences",
-        res
+        res,
+        false,
+        [JSON.stringify(data)]
       );
     } finally {
       // Close the database connection if it was opened
@@ -548,9 +570,10 @@ router.post(
   validate.validateRequest, // Middleware for validating the request based on the rules
   async (req, res) => {
     let link; // Database connection variable
+    let data;
     try {
       // Get the validated and sanitized data from the request
-      const data = matchedData(req);
+      data = matchedData(req);
 
       // Open a connection to the database
       link = await openDbConnection(dbConfig);
@@ -572,7 +595,9 @@ router.post(
         error.statusCode,
         "feedback/findMySessions",
         "Failed to find sessions",
-        res
+        res,
+        false,
+        [JSON.stringify(data)]
       );
     } finally {
       // Close the database connection if it was opened
@@ -603,9 +628,10 @@ router.post(
   validate.validateRequest, // Middleware for validating the request based on the rules
   async (req, res) => {
     let link; // Database connection variable
+    let data;
     try {
       // Get the validated and sanitized data from the request
-      const data = matchedData(req);
+      data = matchedData(req);
 
       // Open a connection to the database
       link = await openDbConnection(dbConfig);
@@ -633,7 +659,9 @@ router.post(
         error.statusCode,
         "feedback/loadGiveFeedback",
         "Failed to load session details",
-        res
+        res,
+        false,
+        [JSON.stringify(data)]
       );
     } finally {
       // Close the database connection if it was opened
@@ -666,9 +694,10 @@ router.post(
   validate.validateRequest, // Middleware for validating the request based on the rules
   async (req, res) => {
     let link; // Database connection variable
+    let data;
     try {
       // Get the validated and sanitized data from the request
-      const data = matchedData(req);
+      data = matchedData(req);
 
       // Open a connection to the database
       link = await openDbConnection(dbConfig);
@@ -697,7 +726,9 @@ router.post(
         error.statusCode,
         "feedback/giveFeedback",
         "Failed to submit feedback",
-        res
+        res,
+        false,
+        [JSON.stringify(data)]
       );
     } finally {
       // Close the database connection if it was opened
@@ -730,9 +761,10 @@ router.post(
   validate.validateRequest, // Middleware for validating the request based on the rules
   async (req, res) => {
     let link; // Database connection variable
+    let data;
     try {
       // Get the validated and sanitized data from the request
-      const data = matchedData(req);
+      data = matchedData(req);
 
       // Open a connection to the database
       link = await openDbConnection(dbConfig);
@@ -775,7 +807,8 @@ router.post(
         "feedback/fetchCertificate",
         "Failed to fetch certificate",
         res,
-        true
+        true,
+        [JSON.stringify(data)]
       );
     } finally {
       // Close the database connection if it was opened
@@ -807,9 +840,10 @@ router.post(
   validate.validateRequest, // Middleware for validating the request based on the rules
   async (req, res) => {
     let link; // Database connection variable
+    let data;
     try {
       // Get the validated and sanitized data from the request
-      const data = matchedData(req);
+      data = matchedData(req);
 
       // Open a connection to the database
       link = await openDbConnection(dbConfig);
@@ -844,12 +878,15 @@ router.post(
       feedback = decodeObjectStrings(feedback);
       res.json(feedback);
     } catch (error) {
+      delete data.pin; // Remove the pin from the error message
       handleError(
         error,
         error.statusCode,
         "feedback/viewFeedback",
         "Failed to load feedback report",
-        res
+        res,
+        false,
+        [JSON.stringify(data)]
       );
     } finally {
       // Close the database connection if it was opened
@@ -876,13 +913,14 @@ router.post(
  */
 router.post(
   "/fetchFeedbackPDF",
-  validate.loadUpdateSessionRules, // Middleware for validating fetch attendance pdf request data
+  validate.fetchFeedbackPDFRules, // Middleware for validating fetch attendance pdf request data
   validate.validateRequest, // Middleware for validating the request based on the rules
   async (req, res) => {
     let link; // Database connection variable
+    let data;
     try {
       // Get the validated and sanitized data from the request
-      const data = matchedData(req);
+      data = matchedData(req);
 
       // Open a connection to the database
       link = await openDbConnection(dbConfig);
@@ -894,7 +932,11 @@ router.post(
       } = require("../utilities/pinUtilities");
 
       // Retrieve organisers associated with the session ID
-      const organisers = await getOrganisers(data.id, "feedback", link);
+      const organisers = await getOrganisers(
+        data.parentSessionId ?? data.id,
+        "feedback",
+        link
+      );
 
       // Check if the provided PIN is valid for any organiser
       const user = organisers.find((organiser) =>
@@ -909,13 +951,15 @@ router.post(
       const { fetchFeedbackPDF } = require("./routes/fetchFeedbackPDF");
       await fetchFeedbackPDF(data.id, res, link);
     } catch (error) {
+      delete data.pin; // Remove the pin from the error message
       handleError(
         error,
         error.statusCode,
         "feedback/fetchFeedbackPDF",
         "Failed to fetch feedback PDF report",
         res,
-        true
+        true,
+        [JSON.stringify(data)]
       );
     } finally {
       // Close the database connection if it was opened
@@ -947,9 +991,10 @@ router.post(
   validate.validateRequest, // Middleware for validating the request based on the rules
   async (req, res) => {
     let link; // Database connection variable
+    let data;
     try {
       // Get the validated and sanitized data from the request
-      const data = matchedData(req);
+      data = matchedData(req);
 
       // Open a connection to the database
       link = await openDbConnection(dbConfig);
@@ -983,12 +1028,15 @@ router.post(
       attendance = decodeObjectStrings(attendance);
       res.json(attendance);
     } catch (error) {
+      delete data.pin; // Remove the pin from the error message
       handleError(
         error,
         error.statusCode,
         "feedback/viewAttendance",
         "Failed to load attendance report",
-        res
+        res,
+        false,
+        [JSON.stringify(data)]
       );
     } finally {
       // Close the database connection if it was opened
@@ -1020,9 +1068,10 @@ router.post(
   validate.validateRequest, // Middleware for validating the request based on the rules
   async (req, res) => {
     let link; // Database connection variable
+    let data;
     try {
       // Get the validated and sanitized data from the request
-      const data = matchedData(req);
+      data = matchedData(req);
 
       // Open a connection to the database
       link = await openDbConnection(dbConfig);
@@ -1049,13 +1098,15 @@ router.post(
       const { fetchAttendancePDF } = require("./routes/fetchAttendancePDF");
       await fetchAttendancePDF(data.id, res, link);
     } catch (error) {
+      delete data.pin; // Remove the pin from the error message
       handleError(
         error,
         error.statusCode,
         "feedback/fetchAttendancePDF",
         "Failed to fetch attendance PDF report",
         res,
-        true
+        true,
+        [JSON.stringify(data)]
       );
     } finally {
       // Close the database connection if it was opened
