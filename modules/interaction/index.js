@@ -337,7 +337,7 @@ router.post(
  */
 router.post(
   "/fetchSubmissionCount",
-  validate.fetchDetailsHostRules, // Middleware for validating fetch request data
+  validate.fetchSubmissionCountRules, // Middleware for validating fetch request data
   validate.validateRequest, // Middleware for validating the request based on the rules
   async (req, res) => {
     let link; // Database connection variable
@@ -364,7 +364,7 @@ router.post(
 
       // Retrieve the submission count
       const { fetchSubmissionCount } = require("./routes/fetchSubmissionCount");
-      let submissionCount = await fetchSubmissionCount(link, data.id);
+      let submissionCount = await fetchSubmissionCount(link, data);
 
       // Return the submission count
       res.json(submissionCount);
@@ -626,7 +626,7 @@ router.post(
  */
 router.post(
   "/deactivateSubmissions",
-  validate.fetchDetailsHostRules, // Middleware for validating update request data
+  validate.fetchSubmissionCountRules, // Middleware for validating update request data
   validate.validateRequest, // Middleware for validating the request based on the rules
   async (req, res) => {
     let link; // Database connection variable
@@ -655,7 +655,7 @@ router.post(
       const {
         deactivateSubmissions,
       } = require("./routes/deactivateSubmissions");
-      await deactivateSubmissions(link, data.id);
+      await deactivateSubmissions(link, data);
 
       // Respond with a success message
       res.json({ message: "Submissions cleared" });

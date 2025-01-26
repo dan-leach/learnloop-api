@@ -15,7 +15,6 @@
 
 const { check, validationResult } = require("express-validator");
 const { handleError } = require("../utilities/routeUtilities");
-const { escape } = require("mysql");
 
 /**
  * Validation rules for the interest route
@@ -151,6 +150,18 @@ const updateStatusRules = [
 ];
 
 /**
+ * Validation rules for the fetchSubmissionCount route.
+ * @type {Array}
+ */
+const fetchSubmissionCountRules = [
+  ...fetchDetailsHostRules,
+
+  check("isPreview")
+    .isBoolean()
+    .withMessage("Preview status field must be data type [boolean]."),
+];
+
+/**
  * Validation rules for the fetchNewSubmissions route
  * @type {array}
  */
@@ -169,6 +180,10 @@ const fetchNewSubmissionsRules = [
   check("lastSubmissionId")
     .isInt()
     .withMessage("Last submission ID field must be data type [integer]."),
+
+  check("isPreview")
+    .isBoolean()
+    .withMessage("Preview status field must be data type [boolean]."),
 ];
 
 /**
@@ -197,6 +212,10 @@ const insertSubmissionRules = [
     .withMessage("Slide index field must be data type [integer]."),
 
   check("response").exists().withMessage("Response cannot be empty.").escape(),
+
+  check("isPreview")
+    .isBoolean()
+    .withMessage("Preview status field must be data type [boolean]."),
 ];
 
 /**
@@ -242,6 +261,7 @@ module.exports = {
   updateSessionRules,
   fetchDetailsHostRules,
   updateStatusRules,
+  fetchSubmissionCountRules,
   fetchNewSubmissionsRules,
   fetchDetailsJoinRules,
   insertSubmissionRules,

@@ -16,14 +16,14 @@ const config = require("../../../config.json");
  * @summary Retrieves the count from the database.
  *
  * @param {object} link - The database connection object used to execute queries.
- * @param {string} id - The session ID.
+ * @param {object} data - Containing the session ID and the preview status
  * @returns {Promise<integer>} - Resolves with the count.
  * @throws {Error} - Throws an error if the query fails.
  */
-const fetchSubmissionCount = async (link, id) => {
+const fetchSubmissionCount = async (link, data) => {
   const [rows] = await link.execute(
-    `SELECT COUNT(*) AS submission_count FROM ${config.interaction.tables.tblSubmissions} WHERE sessionId = ? AND active = ?`,
-    [id, true]
+    `SELECT COUNT(*) AS submission_count FROM ${config.interaction.tables.tblSubmissions} WHERE sessionId = ? AND active = ? AND preview = ?`,
+    [data.id, true, data.isPreview]
   );
 
   return rows[0].submission_count;

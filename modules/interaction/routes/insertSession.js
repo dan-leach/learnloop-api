@@ -55,6 +55,7 @@ const insertSession = async (link, data) => {
     createStep: "draft",
     facilitatorIndex: 0,
     lockedSlides: [],
+    preview: false,
   };
 
   const betaTesters = require("../../private/betaTesters.json");

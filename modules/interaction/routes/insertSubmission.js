@@ -17,7 +17,7 @@ const config = require("../../../config.json");
  * @summary Inserts a attendee submission into the database.
  *
  * @param {object} link - The database connection object for executing queries.
- * @param {object} data - The submission data including session id, slideIndex and response string.
+ * @param {object} data - The submission data including session id, slideIndex, response string and preview status.
  * @returns {Promise<boolean>} - Returns true if the insertion is successful.
  * @throws {Error} - Throws an error if the database connection is invalid or if the insertion fails.
  */
@@ -27,10 +27,16 @@ const insertSubmission = async (link, data) => {
   }
 
   const query = `INSERT INTO ${config.interaction.tables.tblSubmissions} 
-        (sessionId, slideIndex, response, active) 
-        VALUES (?, ?, ?, ?)`;
+        (sessionId, slideIndex, response, active, preview) 
+        VALUES (?, ?, ?, ?, ?)`;
 
-  await link.execute(query, [data.id, data.slideIndex, data.response, true]);
+  await link.execute(query, [
+    data.id,
+    data.slideIndex,
+    data.response,
+    true,
+    data.isPreview,
+  ]);
 
   return true;
 };

@@ -26,8 +26,8 @@ const config = require("../../../config.json");
  */
 const fetchNewSubmissions = async (link, data) => {
   const [rows] = await link.execute(
-    `SELECT * FROM ${config.interaction.tables.tblSubmissions} WHERE sessionId = ? AND slideIndex = ? AND id > ? AND active = ?`,
-    [data.id, data.slideIndex, data.lastSubmissionId, true]
+    `SELECT * FROM ${config.interaction.tables.tblSubmissions} WHERE sessionId = ? AND slideIndex = ? AND id > ? AND active = ? AND preview = ?`,
+    [data.id, data.slideIndex, data.lastSubmissionId, true, data.isPreview]
   );
 
   return rows;

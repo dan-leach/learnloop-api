@@ -18,15 +18,15 @@ const config = require("../../../config.json");
  * @summary Sets the active parameter for old submissions to false.
  *
  * @param {Object} link - The MySQL connection object used to execute queries.
- * @param {string} id - The session ID for which submissions are to be deactivated.
+ * @param {object} data - Object with the session ID for which submissions are to be deactivated and the preview status.
  * @returns {Promise<void>} - Resolves when the submissions have been deactivated in the database.
  * @throws {Error} - Throws an error if the query execution fails.
  */
-const deactivateSubmissions = async (link, id) => {
+const deactivateSubmissions = async (link, data) => {
   // Execute the query with the provided id
   await link.execute(
-    `UPDATE ${config.interaction.tables.tblSubmissions} SET active = ? WHERE sessionId = ? AND active = ?`,
-    [false, id, true]
+    `UPDATE ${config.interaction.tables.tblSubmissions} SET active = ? WHERE sessionId = ? AND active = ? AND preview = ?`,
+    [false, data.id, true, data.isPreview]
   );
 };
 

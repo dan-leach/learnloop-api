@@ -57,7 +57,10 @@ const updateSession = async (link, data) => {
 
   //deactivate the old submissions which may no longer be appropriate for the slide
   const { deactivateSubmissions } = require("./deactivateSubmissions");
-  await deactivateSubmissions(link, data.id);
+  data.isPreview = true;
+  await deactivateSubmissions(link, data);
+  data.isPreview = false;
+  await deactivateSubmissions(link, data);
 
   return true;
 };
