@@ -388,6 +388,20 @@ const fetchCertificateRules = [
     .escape(),
 ];
 
+/**
+ * Validation rules for the fetchFeedbackPDF route.
+ * @type {Array}
+ */
+const fetchFeedbackPDFRules = [
+  ...loadUpdateSessionRules,
+
+  check("parentSessionId")
+    .optional()
+    .isString()
+    .withMessage("Parent session ID field must by data type [string]")
+    .escape(),
+];
+
 // Middleware function to validate the request
 const validateRequest = (req, res, next) => {
   try {
@@ -402,7 +416,9 @@ const validateRequest = (req, res, next) => {
       500,
       "validateRequest",
       "Failed to validate request",
-      res
+      res,
+      false,
+      [JSON.stringify(req.body)]
     );
   }
 };
@@ -417,5 +433,6 @@ module.exports = {
   loadGiveFeedbackRules,
   giveFeedbackRules,
   fetchCertificateRules,
+  fetchFeedbackPDFRules,
   validateRequest,
 };

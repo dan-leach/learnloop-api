@@ -30,36 +30,32 @@ const dateUtilities = require("../../utilities/dateUtilities");
  * @throws {Error} - Throws an error if database operations or email dispatch fail.
  */
 async function findMySessions(email, link) {
-  try {
-    const foundSessions = await selectSessionsByEmail(email, link);
+  const foundSessions = await selectSessionsByEmail(email, link);
 
-    let organiser = {};
-    if (foundSessions.length) {
-      organiser = foundSessions[0].organisers.find(
-        (organisers) => organisers.email === email
-      );
-    } else {
-      organiser = {
-        name: "unknown user",
-        email,
-      };
-    }
-
-    const sendMailFails = [];
-    const emailOutcome = await emailOrganiserSessions(foundSessions, organiser);
-
-    if (!emailOutcome.sendSuccess) {
-      sendMailFails.push({
-        name: organiser.name,
-        email: organiser.email,
-        error: emailOutcome.error,
-      });
-    }
-
-    return sendMailFails;
-  } catch (error) {
-    throw error;
+  let organiser = {};
+  if (foundSessions.length) {
+    organiser = foundSessions[0].organisers.find(
+      (organisers) => organisers.email === email
+    );
+  } else {
+    organiser = {
+      name: "unknown user",
+      email,
+    };
   }
+
+  const sendMailFails = [];
+  const emailOutcome = await emailOrganiserSessions(foundSessions, organiser);
+
+  if (!emailOutcome.sendSuccess) {
+    sendMailFails.push({
+      name: organiser.name,
+      email: organiser.email,
+      error: emailOutcome.error,
+    });
+  }
+
+  return sendMailFails;
 }
 
 /**

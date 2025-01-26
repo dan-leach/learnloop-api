@@ -62,6 +62,7 @@ function decodeObjectStrings(obj) {
  * @param {string} [routeMsg="API failed at unknown route"] - A custom message describing the error context.
  * @param {object} res - The Express.js response object for sending the error response.
  * @param {boolean} [returnHtml=false] - If true, sends the error message as HTML. Otherwise, sends JSON.
+ * @param {array} [info=[]] - An array of additional informational strings such as a session ID or request parameter.
  * @throws {Error} - If email sending fails, this function may throw an error.
  */
 function handleError(
@@ -70,12 +71,13 @@ function handleError(
   route = "undefinedRoute",
   routeMsg = "API failed at unknown route",
   res,
-  returnHtml = false
+  returnHtml = false,
+  info = []
 ) {
   // Log the error with a timestamp for debugging
   delete error.statusCode;
   const errorTime = new Date().toISOString();
-  console.error(errorTime, `${route} ${statusCode}`, error);
+  console.error(errorTime, `${route} ${statusCode}`, [info.join(" | ")], error);
 
   const config = require("../../config.json");
 
@@ -101,7 +103,9 @@ function handleError(
     html = `
         <p>route: ${route}<br>
         errorMessage: ${error.message}<br>
-        errorTime: ${errorTime}</p>
+        errorTime: ${errorTime}<br>
+        info: [${info.join(" | ")}]<br>
+        </p>
       `;
     const mailUtilities = require("../utilities/mailUtilities");
     mailUtilities.sendMail(
