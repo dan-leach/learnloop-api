@@ -50,7 +50,7 @@ const fetchCertificate = async (sessionDetails, attendee, res) => {
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader(
     "Content-Disposition",
-    `attachment; filename=${decode(sessionDetails.title)}_certificate.pdf`
+    `attachment; filename=learnloop-certificate.pdf`
   );
 
   // Pipe the PDF into the response
