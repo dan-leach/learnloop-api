@@ -35,7 +35,7 @@ async function findMySessions(email, link) {
   let organiser = {};
   if (foundSessions.length) {
     organiser = foundSessions[0].organisers.find(
-      (organisers) => organisers.email === email
+      (organiser) => organiser.email.toLowerCase() === email.toLowerCase()
     );
   } else {
     organiser = {
