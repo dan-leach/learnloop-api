@@ -266,8 +266,8 @@ const insertSessionIntoDatabase = async (
   }
 
   const query = `INSERT INTO ${config.feedback.tables.tblSessions} 
-      (id, name, title, date, multipleDates, organisers, questions, certificate, subsessions, isSubsession, attendance) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+      (id, name, title, date, multipleDates, organisers, questions, certificate, subsessions, isSubsession, attendance, appVersion) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
   await link.execute(query, [
     id,
@@ -281,6 +281,7 @@ const insertSessionIntoDatabase = async (
     subsessionIds,
     isSubsession,
     data.attendance,
+    config.version,
   ]);
 
   return true;

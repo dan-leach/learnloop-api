@@ -100,8 +100,8 @@ const insertSessionIntoDatabase = async (link, id, organiser, data, status) => {
   }
 
   const query = `INSERT INTO ${config.interaction.tables.tblSessions} 
-        (id, title, organisers, slides, feedbackId, status) 
-        VALUES (?, ?, ?, ?, ?, ?)`;
+        (id, title, organisers, slides, feedbackId, status, appVersion) 
+        VALUES (?, ?, ?, ?, ?, ?, ?)`;
 
   await link.execute(query, [
     id,
@@ -110,6 +110,7 @@ const insertSessionIntoDatabase = async (link, id, organiser, data, status) => {
     [],
     data.feedbackId ? data.feedbackId : null,
     status,
+    config.version,
   ]);
 
   return true;
