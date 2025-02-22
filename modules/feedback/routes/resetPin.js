@@ -45,7 +45,7 @@ const resetPin = async (link, data, session) => {
   const organisers = await getOrganisers(data.id, "feedback", link);
 
   const organiserIndex = organisers.findIndex(
-    (organiser) => organiser.email === data.email
+    (organiser) => organiser.email.toLowerCase() === data.email.toLowerCase()
   );
 
   if (organiserIndex === -1) {
