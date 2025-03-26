@@ -105,8 +105,8 @@ const insertSession = async (
     const pin = pinUtilities.createPin();
     const salt = pinUtilities.createSalt();
     Object.assign(data, {
-      date: "0000-00-00",
-      multipleDates: false,
+      date: seriesData.date,
+      multipleDates: seriesData.multipleDates,
       questions: [], // Subsessions do not have custom questions
       certificate: false, // Subsessions do not directly provide certificates
       attendance: false, // Subsessions do not directly log attendance
@@ -273,7 +273,7 @@ const insertSessionIntoDatabase = async (
     id,
     data.name,
     data.title,
-    data.multipleDates || isSubsession ? "0000-00-00" : data.date,
+    data.date,
     data.multipleDates,
     data.organisers,
     data.questions,
