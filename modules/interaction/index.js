@@ -8,7 +8,7 @@
  * @requires express-validator
  * @requires ./validate Rulesets and validation function for each route
  *
- * @exports router Object containing the different routes available in the feedback module
+ * @exports router Object containing the different routes available in the interaction module
  */
 
 const express = require("express");
@@ -757,6 +757,68 @@ router.get(
         "Failed to fetch image",
         res
       );
+    }
+  }
+);
+
+/**
+ * @async
+ * @route POST /interaction/findMySessions
+ * @memberof module:interaction
+ * @summary Sends an email with a list of sessions for which that email is an organiser.
+ *
+ * @description
+ * This route allows a user to request an email with details of interaction sessions they are an
+ * organiser for. It validates the provided email, checks the database for sessions matching the
+ * criteria, and sends an email containing the session details. If no matching sessions are found,
+ * the email indicates this with an appropriate message.
+ *
+ * @requires ./validate - Module for defining validation rules and sanitizing request data.
+ * @requires ./routes/findMySessions
+ *
+ * @param {object} req.body.data - The data containing the email.
+ *
+ * @returns {object} 200 - A success message indicating that the email of sessions was sent.
+ * @returns {object} 500 - Error message if the process fails.
+ */
+router.post(
+  "/findMySessions",
+  validate.findMySessionsRules, // Middleware for validating find my sessions request data
+  validate.validateRequest, // Middleware for validating the request based on the rules
+  async (req, res) => {
+    let link; // Database connection variable
+    let data;
+    try {
+      // Get the validated and sanitized data from the request
+      data = matchedData(req);
+
+      // Open a connection to the database
+      link = await openDbConnection(dbConfig);
+
+      // Find and send the sessions
+      const { findMySessions } = require("./routes/findMySessions");
+      const sendMailFails = await findMySessions(data.email, link);
+
+      // Respond with a success message
+      res.json({
+        message: sendMailFails.length
+          ? ""
+          : "Please check your email for session details.",
+        sendMailFails,
+      });
+    } catch (error) {
+      handleError(
+        error,
+        error.statusCode,
+        "interaction/findMySessions",
+        "Failed to find sessions",
+        res,
+        false,
+        [JSON.stringify(data)]
+      );
+    } finally {
+      // Close the database connection if it was opened
+      if (link) await link.end();
     }
   }
 );

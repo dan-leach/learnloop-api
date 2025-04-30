@@ -255,6 +255,16 @@ const validateRequest = (req, res, next) => {
   }
 };
 
+/**
+ * Validation rules for the findMySessions route
+ * @type {array}
+ */
+const findMySessionsRules = [
+  check("email")
+    .isEmail()
+    .withMessage("Email field must be a valid email address format."),
+];
+
 module.exports = {
   interestRules,
   insertSessionRules,
@@ -266,5 +276,6 @@ module.exports = {
   fetchDetailsJoinRules,
   insertSubmissionRules,
   fetchImageRules,
+  findMySessionsRules,
   validateRequest,
 };
