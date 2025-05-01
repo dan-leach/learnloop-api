@@ -61,87 +61,110 @@
     },
     "create": {
       "slides": {
-        "types": {
-          "trueFalse": {
-            "name": "True / false",
-            "id": "trueFalse",
-            "isInteractive": true,
-            "defaultOptions": [
-              {
-                "text": "true",
-                "correct": false,
-                "incorrect": false
-              },
-              {
-                "text": "false",
-                "correct": false,
-                "incorrect": false
+        "interaction": {
+          "types": {
+            "trueFalse": {
+              "name": "True / false",
+              "id": "trueFalse",
+              "defaultOptions": [
+                {
+                  "text": "true",
+                  "correct": false,
+                  "incorrect": false
+                },
+                {
+                  "text": "false",
+                  "correct": false,
+                  "incorrect": false
+                }
+              ],
+              "settings": {
+                "charts": ["bar", "doughnut"],
+                "optionsLimit": 2,
+                "submissionLimit": 1,
+                "hideResponses": false
               }
-            ],
-            "settings": {
-              "charts": ["bar", "doughnut"],
-              "optionsLimit": 2,
-              "submissionLimit": 1,
-              "hideResponses": false
+            },
+            "multipleChoice": {
+              "name": "Multiple choice",
+              "id": "multipleChoice",
+              "settings": {
+                "charts": ["bar", "doughnut"],
+                "optionsLimit": 10,
+                "selectedLimit": {
+                  "min": 1,
+                  "max": 1
+                },
+                "submissionLimit": 1,
+                "hideResponses": false
+              }
+            },
+            "freeText": {
+              "name": "Free text",
+              "id": "freeText",
+              "settings": {
+                "optionsLimit": 0,
+                "characterLimit": {
+                  "min": 1,
+                  "max": 200
+                },
+                "submissionLimit": 10,
+                "hideResponses": false
+              }
+            },
+            "wordCloud": {
+              "name": "Word cloud",
+              "id": "wordCloud",
+              "settings": {
+                "optionsLimit": 0,
+                "characterLimit": {
+                  "min": 1,
+                  "max": 500
+                },
+                "submissionLimit": 10,
+                "hideResponses": false
+              }
             }
           },
-          "multipleChoice": {
-            "name": "Multiple choice",
-            "id": "multipleChoice",
-            "isInteractive": true,
-            "settings": {
-              "charts": ["bar", "doughnut"],
-              "optionsLimit": 10,
-              "selectedLimit": {
-                "min": 1,
-                "max": 1
-              },
-              "submissionLimit": 1,
-              "hideResponses": false
+          "submissionLimitMax": 100,
+          "minimumOptions": 2
+        },
+        "content": {
+          "layouts": {
+            "textStrings": {
+              "name": "Text",
+              "id": "textStrings",
+              "hasTextStrings": true,
+              "hasImages": false,
+              "hasVideo": false
+            },
+            "gallery": {
+              "name": "Image gallery",
+              "id": "gallery",
+              "hasTextStrings": false,
+              "hasImages": true,
+              "hasVideo": false,
+              "maxImages": 10,
+              "maxFilesize": 20000000
+            },
+            "video": {
+              "name": "Video",
+              "id": "video",
+              "hasTextStrings": false,
+              "hasImages": false,
+              "hasVideo": true,
+              "maxVideos": 1
+            },
+            "textStringWithImage": {
+              "name": "Text with image",
+              "id": "textStringWithImage",
+              "hasTextStrings": true,
+              "hasImages": true,
+              "hasVideo": false,
+              "maxImages": 1,
+              "maxFilesize": 20000000
             }
-          },
-          "freeText": {
-            "name": "Free text",
-            "id": "freeText",
-            "isInteractive": true,
-            "settings": {
-              "optionsLimit": 0,
-              "characterLimit": {
-                "min": 1,
-                "max": 200
-              },
-              "submissionLimit": 10,
-              "hideResponses": false
-            }
-          },
-          "wordCloud": {
-            "name": "Word cloud",
-            "id": "wordCloud",
-            "isInteractive": true,
-            "settings": {
-              "optionsLimit": 0,
-              "characterLimit": {
-                "min": 1,
-                "max": 500
-              },
-              "submissionLimit": 10,
-              "hideResponses": false
-            }
-          },
-          "static": {
-            "name": "Static",
-            "id": "static",
-            "isInteractive": false
           }
-        },
-        "submissionLimitMax": 100,
-        "minimumOptions": 2,
-        "images": {
-          "max": 10,
-          "maxFilesize": 20000000
-        },
-        "videos": {
-          "max": 1
         }
       }
     },

@@ -96,18 +96,25 @@ const updateSessionRules = [
     .isArray()
     .withMessage("Slides field must be data type [array]."),
 
-  check("slides.*.type")
+  check("slides.*.content.layout")
     .notEmpty()
-    .withMessage("Slide type must be provided.")
+    .withMessage("Slide content layout must be provided.")
     .isString()
-    .withMessage("Slide type field must be data type [string].")
+    .withMessage("Slide content layout field must be data type [string].")
     .escape(),
 
-  check("slides.*.prompt")
+  check("slides.*.interaction.type")
     .notEmpty()
-    .withMessage("Slide prompt must be provided.")
+    .withMessage("Slide interaction type must be provided.")
     .isString()
-    .withMessage("Slide prompt field must be data type [string].")
+    .withMessage("Slide interaction type field must be data type [string].")
+    .escape(),
+
+  check("slides.*.heading")
+    .notEmpty()
+    .withMessage("Slide heading must be provided.")
+    .isString()
+    .withMessage("Slide heading field must be data type [string].")
     .escape(),
 
   check("slides.*.content")
