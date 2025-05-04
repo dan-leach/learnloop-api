@@ -136,7 +136,8 @@
               "id": "textStrings",
               "hasTextStrings": true,
               "hasImages": false,
-              "hasVideo": false
+              "hasVideo": false,
+              "showContentForAttendeesDefault": true
             },
             "gallery": {
               "name": "Image gallery",
@@ -144,8 +145,9 @@
               "hasTextStrings": false,
               "hasImages": true,
               "hasVideo": false,
-              "maxImages": 10,
-              "maxFilesize": 20000000
+              "maxImages": 12,
+              "maxFilesize": 10000000,
+              "showContentForAttendeesDefault": true
             },
             "video": {
               "name": "Video",
@@ -153,16 +155,18 @@
               "hasTextStrings": false,
               "hasImages": false,
               "hasVideo": true,
-              "maxVideos": 1
+              "maxVideos": 1,
+              "showContentForAttendeesDefault": false
             },
-            "textStringWithImage": {
+            "textStringsWithImage": {
               "name": "Text with image",
-              "id": "textStringWithImage",
+              "id": "textStringsWithImage",
               "hasTextStrings": true,
               "hasImages": true,
               "hasVideo": false,
               "maxImages": 1,
-              "maxFilesize": 20000000
+              "maxFilesize": 20000000,
+              "showContentForAttendeesDefault": true
             }
           }
         }
