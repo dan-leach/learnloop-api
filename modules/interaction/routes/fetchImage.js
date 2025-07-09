@@ -19,7 +19,7 @@ const fs = require("fs");
  * @summary Retrieves and sends an image file to the client.
  *
  * @param {object} data - An object containing details about the image to be fetched.
- * @param {string} data.folder - The folder where the image is stored.
+ * @param {string} data.id - The session ID.
  * @param {string} data.filename - The name of the image file.
  * @param {object} res - The Express.js response object used to send the file or an error response.
  *
@@ -30,7 +30,7 @@ const fs = require("fs");
 const fetchImage = (data, res) => {
   const filePath = path.join(
     path.dirname(__dirname),
-    `uploads/images/${data.folder}/`,
+    `uploads/images/${data.id}/`,
     data.filename
   );
 

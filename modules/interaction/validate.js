@@ -230,10 +230,28 @@ const insertSubmissionRules = [
  * @type {array}
  */
 const fetchImageRules = [
-  check("folder")
+  check("id")
     .isString()
-    .withMessage("Image folder field must be data type [string].")
+    .withMessage("ID field must be data type [string].")
     .escape(),
+
+  check("filename")
+    .isString()
+    .withMessage("Image filename field must be data type [string].")
+    .escape(),
+];
+
+/**
+ * Validation rules for the deleteImageRules route
+ * @type {array}
+ */
+const deleteImageRules = [
+  check("id")
+    .isString()
+    .withMessage("ID field must be data type [string].")
+    .escape(),
+
+  check("pin").isInt().withMessage("PIN field must be data type [integer]."),
 
   check("filename")
     .isString()
@@ -283,6 +301,7 @@ module.exports = {
   fetchDetailsJoinRules,
   insertSubmissionRules,
   fetchImageRules,
+  deleteImageRules,
   findMySessionsRules,
   validateRequest,
 };

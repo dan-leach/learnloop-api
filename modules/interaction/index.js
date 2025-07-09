@@ -20,6 +20,8 @@ const {
   handleError,
   decodeObjectStrings,
 } = require("../utilities/routeUtilities");
+const fs = require("fs");
+const path = require("path");
 
 /**
  * @async
@@ -683,35 +685,26 @@ router.post(
  * @description This route uploads a new image and returns the folder and filename to the client.
  * If the request fails at any step, an appropriate error message is returned.
  *
- * @requires ./routes/uploadImage - Contains the logic for uploading the image.
+ * @requires ./routes/uploadImageMiddleware - Contains the logic for processing and uploading the image.
  *
  * @param {object} formData - The data containing the image file.
  * @returns {object} 200 - The folder and filename of the uploaded image.
  * @returns {object} 500 - Error message if uploading the image fails.
  */
-router.post("/uploadImage", (req, res) => {
+const { uploadImageMiddleware } = require("./routes/uploadImage");
+
+router.post("/uploadImage", uploadImageMiddleware, (req, res) => {
   try {
-    const { uploadImage } = require("./routes/uploadImage");
-    uploadImage.single("image")(req, res, (err) => {
-      if (err) {
-        return res.status(400).json({
-          error: true,
-          msg: err.message,
-        });
-      }
-
-      if (!req.file) {
-        throw Object.assign(
-          new Error("No file uploaded or file type not supported"),
-          { statusCode: 400 }
-        );
-      }
-
-      res.json({
-        folder: new Date().toISOString().slice(0, 7),
-        filename: req.file.filename,
+    const imagePath = req.processedImagePath;
+    if (!imagePath) {
+      throw Object.assign(new Error("Image processing failed."), {
+        statusCode: 500,
       });
-    });
+    }
+
+    const filename = path.basename(imagePath);
+
+    res.json({ filename });
   } catch (error) {
     handleError(
       error,
@@ -757,6 +750,73 @@ router.get(
         "Failed to fetch image",
         res
       );
+    }
+  }
+);
+
+/**
+ * @async
+ * @route POST /interaction/deleteImage
+ * @memberof module:interaction
+ * @summary Deletes a specified image for a session.
+ *
+ * @description This route receives a session ID, filename, and organiser PIN. It validates the request and PIN,
+ * and then deletes the specified image from the server if found. Returns a success message or an error.
+ *
+ * @requires ./validate - Module for defining validation rules and sanitizing request data.
+ * @requires ../utilities/pinUtilities - Utility functions for validating PINs.
+ *
+ * @param {object} req.body.data - Contains `id`, `filename`, and `pin`.
+ * @returns {object} 200 - Success message if the image is deleted.
+ * @returns {object} 400 - Error if the file is not found.
+ * @returns {object} 401 - Error if the PIN is invalid.
+ * @returns {object} 500 - Error message for other failures.
+ */
+
+router.post(
+  "/deleteImage",
+  validate.deleteImageRules, // Middleware to validate id, filename, and pin
+  validate.validateRequest,
+  async (req, res) => {
+    let link;
+    try {
+      const data = matchedData(req);
+
+      link = await openDbConnection(dbConfig);
+      const {
+        getOrganisers,
+        pinIsValid,
+      } = require("../utilities/pinUtilities");
+
+      const organiser = (await getOrganisers(data.id, "interaction", link))[0];
+      if (!pinIsValid(data.pin, organiser.salt, organiser.pinHash)) {
+        throw Object.assign(new Error("Invalid PIN"), { statusCode: 401 });
+      }
+
+      const imagePath = path.join(
+        path.dirname(__dirname),
+        `interaction/uploads/images/${data.id}/${data.filename}`
+      );
+
+      console.error("Deleting image", data, imagePath);
+
+      if (!fs.existsSync(imagePath)) {
+        throw Object.assign(new Error("File not found"), { statusCode: 400 });
+      }
+
+      fs.unlinkSync(imagePath);
+
+      res.json({ message: "Image deleted" });
+    } catch (error) {
+      handleError(
+        error,
+        error.statusCode,
+        "interaction/deleteImage",
+        "Failed to delete image",
+        res
+      );
+    } finally {
+      if (link) await link.end();
     }
   }
 );

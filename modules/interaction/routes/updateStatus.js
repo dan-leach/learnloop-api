@@ -27,6 +27,7 @@ const config = require("../../../config.json");
  * @throws {Error} - Throws an error if the query execution fails.
  */
 const updateStatus = async (link, id, status) => {
+  status.lastStatusUpdate = new Date().toISOString();
   // Construct the update query for modifying session details
   const query = `UPDATE ${config.interaction.tables.tblSessions} SET 
                   status = ?
