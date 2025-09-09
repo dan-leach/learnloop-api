@@ -58,12 +58,14 @@ const insertSession = async (link, data) => {
     preview: false,
   };
 
-  const betaTesters = require("../../private/betaTesters.json");
-  if (!betaTesters.includes(organiser.email)) {
-    throw Object.assign(
-      new Error("Email is not on list of approved beta-testers"),
-      { statusCode: 403 }
-    );
+  if (config.devMode) {
+    const betaTesters = require("../../private/betaTesters.json");
+    if (!betaTesters.includes(organiser.email)) {
+      throw Object.assign(
+        new Error("Email is not on list of approved beta-testers"),
+        { statusCode: 403 }
+      );
+    }
   }
 
   // Insert the session into the database

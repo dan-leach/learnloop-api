@@ -98,7 +98,7 @@ function handleError(
     }
   }
 
-  /* Send email alert if unexpected error
+  // Send email alert if unexpected error
   if (statusCode === 500) {
     html = `
         <p>route: ${route}<br>
@@ -114,7 +114,6 @@ function handleError(
       html
     );
   }
-    */
 }
 
 module.exports = { decodeObjectStrings, handleError };
