@@ -1,9 +1,17 @@
 {
-  "version": "6.1",
   "devMode": false,
   "author": "Dan Leach",
   "web": "https://github.com/dan-leach",
-  "repo": "https://github.com/dan-leach/learnloop/tree/v5",
+  "repo": {
+    "client": {
+      "main": "https://github.com/dan-leach/learnloop",
+      "changelog": "https://github.com/dan-leach/learnloop/wiki/Changelog"
+    },
+    "api": {
+      "main": "https://github.com/dan-leach/learnloop-api",
+      "changelog": "https://github.com/dan-leach/learnloop-api/wiki/Changelog"
+    }
+  },
   "email": "mail@learnloop.co.uk",
   "noreplyemail": "noreply@learnloop.co.uk",
   "feedback": {

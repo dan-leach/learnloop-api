@@ -26,9 +26,14 @@ const insertSubmission = async (link, data) => {
     throw new Error("Database connection failed");
   }
 
+  const appVersion = {
+    clientVersion: process.env.clientVersion,
+    apiVersion: process.env.apiVersion,
+  };
+
   const query = `INSERT INTO ${config.interaction.tables.tblSubmissions} 
-        (sessionId, slideIndex, response, active, preview) 
-        VALUES (?, ?, ?, ?, ?)`;
+        (sessionId, slideIndex, response, active, preview, appVersion) 
+        VALUES (?, ?, ?, ?, ?, ?)`;
 
   await link.execute(query, [
     data.id,
@@ -36,6 +41,7 @@ const insertSubmission = async (link, data) => {
     data.response,
     true,
     data.isPreview,
+    appVersion,
   ]);
 
   return true;

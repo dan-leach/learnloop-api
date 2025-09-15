@@ -265,6 +265,11 @@ const insertSessionIntoDatabase = async (
     throw new Error("Database connection failed");
   }
 
+  const appVersion = {
+    clientVersion: process.env.clientVersion,
+    apiVersion: process.env.apiVersion,
+  };
+
   const query = `INSERT INTO ${config.feedback.tables.tblSessions} 
       (id, name, title, date, multipleDates, organisers, questions, certificate, subsessions, isSubsession, attendance, appVersion) 
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
@@ -281,7 +286,7 @@ const insertSessionIntoDatabase = async (
     subsessionIds,
     isSubsession,
     data.attendance,
-    config.version,
+    appVersion,
   ]);
 
   return true;

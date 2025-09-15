@@ -128,6 +128,10 @@ app.get("/config", async (req, res) => {
     );
     config.interaction.count = iRows[0].total_submissions;
 
+    // Add the current version from environment variables
+    config.api.version = process.env.apiVersion;
+    config.client.version = process.env.clientVersion;
+
     // Send the configuration file as a JSON response
     res.json(config);
   } catch (error) {
