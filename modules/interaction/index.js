@@ -8,7 +8,7 @@
  * @requires express-validator
  * @requires ./validate Rulesets and validation function for each route
  *
- * @exports router Object containing the different routes available in the feedback module
+ * @exports router Object containing the different routes available in the interaction module
  */
 
 const express = require("express");
@@ -16,12 +16,17 @@ const router = express.Router();
 const { matchedData } = require("express-validator");
 const validate = require("./validate");
 const { dbConfig, openDbConnection } = require("../utilities/dbUtilities");
-const { handleError } = require("../utilities/routeUtilities");
+const {
+  handleError,
+  decodeObjectStrings,
+} = require("../utilities/routeUtilities");
+const fs = require("fs");
+const path = require("path");
 
 /**
  * @async
- * @route POST /feedback/interest
- * @memberof module:interest
+ * @route POST /interaction/interest
+ * @memberof module:interaction
  * @summary Inserts an interested party's email into the db table.
  *
  * @requires ./validate - Module for defining validation rules and sanitizing request data.
@@ -56,6 +61,820 @@ router.post(
         "interaction/interest",
         "Failed to register email on interest list",
         res
+      );
+    } finally {
+      // Close the database connection if it was opened
+      if (link) await link.end();
+    }
+  }
+);
+
+/**
+ * @async
+ * @route POST /interaction/insertSession
+ * @memberof module:interaction
+ * @summary Inserts a new session into the database.
+ *
+ * @description This route validates the incoming request, creates a new session in the database using the provided data,
+ * and returns the session ID and pin. If the request fails, an error message is returned.
+ *
+ * @requires ./validate - Module for defining validation rules and sanitizing request data.
+ * @requires ./routes/insertSession - Contains the logic for inserting the session into the database and sending out email to the organiser.
+ *
+ * @param {object} req.body.data - The data for the new session to be created.
+ * @returns {object} 200 - An object containing the ID of the newly created session and the lead organiser pin.
+ * @returns {object} 500 - An error message if the session creation fails.
+ */
+router.post(
+  "/insertSession",
+  validate.insertSessionRules, // Middleware for validating session data
+  validate.validateRequest, // Middleware for validating the request based on the rules
+  async (req, res) => {
+    let link; // Database connection variable
+    try {
+      // Get the validated and sanitized data from the request
+      const data = matchedData(req);
+
+      // Open a connection to the database
+      link = await openDbConnection(dbConfig);
+
+      // Insert session into the database and get the session ID and lead pin
+      const { insertSession } = require("./routes/insertSession");
+      const { id, pin, emailOutcome } = await insertSession(link, data);
+
+      // Respond with the session ID and lead organiser pin
+      res.json({ id, pin, emailOutcome });
+    } catch (error) {
+      handleError(
+        error,
+        error.statusCode,
+        "interaction/insertSession",
+        "Failed to create session",
+        res
+      );
+    } finally {
+      // Close the database connection if it was opened
+      if (link) await link.end();
+    }
+  }
+);
+
+/**
+ * @async
+ * @route POST /interaction/updateSession
+ * @memberof module:interaction
+ * @summary Updates session details based on the provided session ID and PIN.
+ *
+ * @description This route validates the incoming request, checks the provided organiser's PIN for validity,
+ * and then updates the session in the database. If the request fails at any step, an appropriate error message is returned.
+ *
+ * @requires ./validate - Module for defining validation rules and sanitizing request data.
+ * @requires ../utilities/pinUtilities - Utility functions for validating PINs.
+ * @requires ./routes/updateSession - Contains the logic for updating the session in the database and sending out emails to the organisers.
+ *
+ * @param {object} req.body.data - The data containing the session ID, updated details, and organiser's PIN.
+ * @returns {object} 200 - A success message indicating that the session was updated.
+ * @returns {object} 401 - Error message if the PIN is invalid.
+ * @returns {object} 500 - Error message if updating the session fails.
+ */
+router.post(
+  "/updateSession",
+  validate.updateSessionRules, // Middleware for validating update session request data
+  validate.validateRequest, // Middleware for validating the request based on the rules
+  async (req, res) => {
+    let link; // Database connection variable
+    try {
+      // Get the validated and sanitized data from the request
+      const data = matchedData(req);
+
+      // Open a connection to the database
+      link = await openDbConnection(dbConfig);
+
+      // Import utility functions for getting organisers and validating PINs
+      const {
+        getOrganisers,
+        pinIsValid,
+      } = require("../utilities/pinUtilities");
+
+      // Retrieve organiser associated with the session ID
+      let organiser = (await getOrganisers(data.id, "interaction", link))[0];
+
+      // Check if the provided PIN is valid for any organiser
+      if (!pinIsValid(data.pin, organiser.salt, organiser.pinHash)) {
+        throw Object.assign(new Error("Invalid PIN"), { statusCode: 401 });
+      }
+
+      // Update the session with the provided data
+      const { updateSession } = require("./routes/updateSession");
+      await updateSession(link, data);
+
+      // Respond with a success message
+      res.json({ message: "The session was updated" });
+    } catch (error) {
+      handleError(
+        error,
+        error.statusCode,
+        "interaction/updateSession",
+        "Failed to update session",
+        res
+      );
+    } finally {
+      // Close the database connection if it was opened
+      if (link) await link.end();
+    }
+  }
+);
+
+/**
+ * @async
+ * @route POST /interaction/fetchDetailsHost
+ * @memberof module:interaction
+ * @summary Loads full session details for the host.
+ *
+ * @description This route validates the incoming request, checks the provided organiser's PIN for validity,
+ * and then returns the session details from the database. If the request fails at any step, an appropriate error message is returned.
+ *
+ * @requires ./validate - Module for defining validation rules and sanitizing request data.
+ * @requires ../utilities/pinUtilities - Utility functions for validating PINs.
+ * @requires ./routes/fetchDetailsHost - Contains the logic for loading the session details.
+ *
+ * @param {object} req.body.data - The data containing the session ID and organiser's PIN.
+ * @returns {object} 200 - The session details object.
+ * @returns {object} 401 - Error message if the PIN is invalid.
+ * @returns {object} 500 - Error message if retrieving the session details fails.
+ */
+router.post(
+  "/fetchDetailsHost",
+  validate.fetchDetailsHostRules, // Middleware for validating session request data
+  validate.validateRequest, // Middleware for validating the request based on the rules
+  async (req, res) => {
+    let link; // Database connection variable
+    try {
+      // Get the validated and sanitized data from the request
+      const data = matchedData(req);
+
+      // Open a connection to the database
+      link = await openDbConnection(dbConfig);
+
+      // Import utility functions for getting organisers and validating PINs
+      const {
+        getOrganisers,
+        pinIsValid,
+      } = require("../utilities/pinUtilities");
+
+      // Retrieve organiser associated with the session ID
+      let organiser = (await getOrganisers(data.id, "interaction", link))[0];
+
+      // Check if the provided PIN is valid for any organiser
+      if (!pinIsValid(data.pin, organiser.salt, organiser.pinHash)) {
+        throw Object.assign(new Error("Invalid PIN"), { statusCode: 401 });
+      }
+
+      // Update the session with the provided data
+      const { fetchDetailsHost } = require("./routes/fetchDetailsHost");
+      let sessionDetails = await fetchDetailsHost(link, data.id);
+
+      // Return the session details
+      sessionDetails = decodeObjectStrings(sessionDetails);
+      res.json(sessionDetails);
+    } catch (error) {
+      handleError(
+        error,
+        error.statusCode,
+        "interaction/fetchDetailsHost",
+        "Failed to load session details",
+        res
+      );
+    } finally {
+      // Close the database connection if it was opened
+      if (link) await link.end();
+    }
+  }
+);
+
+/**
+ * @async
+ * @route POST /interaction/updateStatus
+ * @memberof module:interaction
+ * @summary Updates session status.
+ *
+ * @description This route validates the incoming request, checks the provided organiser's PIN for validity,
+ * and then updates the session status in the database. If the request fails at any step, an appropriate error message is returned.
+ *
+ * @requires ./validate - Module for defining validation rules and sanitizing request data.
+ * @requires ../utilities/pinUtilities - Utility functions for validating PINs.
+ * @requires ./routes/updateStatus - Contains the logic for updating the session in the database and sending out emails to the organisers.
+ *
+ * @param {object} req.body.data - The data containing the session ID, status, and organiser's PIN.
+ * @returns {object} 200 - A success message indicating that the session was updated.
+ * @returns {object} 401 - Error message if the PIN is invalid.
+ * @returns {object} 500 - Error message if updating the session fails.
+ */
+router.post(
+  "/updateStatus",
+  validate.updateStatusRules, // Middleware for validating update session request data
+  validate.validateRequest, // Middleware for validating the request based on the rules
+  async (req, res) => {
+    let link; // Database connection variable
+    try {
+      // Get the validated and sanitized data from the request
+      const data = matchedData(req);
+
+      // Open a connection to the database
+      link = await openDbConnection(dbConfig);
+
+      // Import utility functions for getting organisers and validating PINs
+      const {
+        getOrganisers,
+        pinIsValid,
+      } = require("../utilities/pinUtilities");
+
+      // Retrieve organiser associated with the session ID
+      let organiser = (await getOrganisers(data.id, "interaction", link))[0];
+
+      // Check if the provided PIN is valid for any organiser
+      if (!pinIsValid(data.pin, organiser.salt, organiser.pinHash)) {
+        throw Object.assign(new Error("Invalid PIN"), { statusCode: 401 });
+      }
+
+      // Update the session with the provided data
+      const { updateStatus } = require("./routes/updateStatus");
+      await updateStatus(link, data.id, data.status);
+
+      // Respond with a success message
+      res.json({ message: "Session status updated" });
+    } catch (error) {
+      handleError(
+        error,
+        error.statusCode,
+        "interaction/updateStatus",
+        "Failed to update session status",
+        res
+      );
+    } finally {
+      // Close the database connection if it was opened
+      if (link) await link.end();
+    }
+  }
+);
+
+/**
+ * @async
+ * @route POST /interaction/fetchSubmissionCount
+ * @memberof module:interaction
+ * @summary Returns a count of the submissions associated with a particular interaction session id.
+ *
+ * @description This route validates the incoming request, checks the provided organiser's PIN for validity,
+ * and then returns the submission count matching the given session id. If the request fails at any step,
+ * an appropriate error message is returned.
+ *
+ * @requires ./validate - Module for defining validation rules and sanitizing request data.
+ * @requires ../utilities/pinUtilities - Utility functions for validating PINs.
+ * @requires ./routes/fetchSubmissionCount - Contains the logic for fetching the count.
+ *
+ * @param {object} req.body.data - The data containing the session ID and PIN.
+ * @returns {integer} 200 - The submission count.
+ * @returns {object} 401 - Error message if the PIN is invalid.
+ * @returns {object} 500 - Error message if retrieving the count fails.
+ */
+router.post(
+  "/fetchSubmissionCount",
+  validate.fetchSubmissionCountRules, // Middleware for validating fetch request data
+  validate.validateRequest, // Middleware for validating the request based on the rules
+  async (req, res) => {
+    let link; // Database connection variable
+    try {
+      // Get the validated and sanitized data from the request
+      const data = matchedData(req);
+
+      // Open a connection to the database
+      link = await openDbConnection(dbConfig);
+
+      // Import utility functions for getting organisers and validating PINs
+      const {
+        getOrganisers,
+        pinIsValid,
+      } = require("../utilities/pinUtilities");
+
+      // Retrieve organiser associated with the session ID
+      let organiser = (await getOrganisers(data.id, "interaction", link))[0];
+
+      // Check if the provided PIN is valid for any organiser
+      if (!pinIsValid(data.pin, organiser.salt, organiser.pinHash)) {
+        throw Object.assign(new Error("Invalid PIN"), { statusCode: 401 });
+      }
+
+      // Retrieve the submission count
+      const { fetchSubmissionCount } = require("./routes/fetchSubmissionCount");
+      let submissionCount = await fetchSubmissionCount(link, data);
+
+      // Return the submission count
+      res.json(submissionCount);
+    } catch (error) {
+      handleError(
+        error,
+        error.statusCode,
+        "interaction/fetchSubmissionCount",
+        "Failed to load submission count",
+        res
+      );
+    } finally {
+      // Close the database connection if it was opened
+      if (link) await link.end();
+    }
+  }
+);
+
+/**
+ * @async
+ * @route POST /interaction/fetchNewSubmissions
+ * @memberof module:interaction
+ * @summary Loads submissions later than the previously latest loaded submission.
+ *
+ * @description This route validates the incoming request, checks the provided organiser's PIN for validity,
+ * and then returns the submissions with an ID greater than that provided with the request. If there are no new
+ * submissions since the last check, an empty array is returned. If the request fails at any step, an appropriate
+ * error message is returned.
+ *
+ * @requires ./validate - Module for defining validation rules and sanitizing request data.
+ * @requires ../utilities/pinUtilities - Utility functions for validating PINs.
+ * @requires ./routes/fetchNewSubmissions - Contains the logic for loading the submissions.
+ *
+ * @param {object} req.body.data - The data containing the session ID, PIN, slideIndex and lastSubmissionId.
+ * @returns {array} 200 - An array of submissions.
+ * @returns {object} 401 - Error message if the PIN is invalid.
+ * @returns {object} 500 - Error message if retrieving the submissions fails.
+ */
+router.post(
+  "/fetchNewSubmissions",
+  validate.fetchNewSubmissionsRules, // Middleware for validating fetch request data
+  validate.validateRequest, // Middleware for validating the request based on the rules
+  async (req, res) => {
+    let link; // Database connection variable
+    try {
+      // Get the validated and sanitized data from the request
+      const data = matchedData(req);
+
+      // Open a connection to the database
+      link = await openDbConnection(dbConfig);
+
+      // Import utility functions for getting organisers and validating PINs
+      const {
+        getOrganisers,
+        pinIsValid,
+      } = require("../utilities/pinUtilities");
+
+      // Retrieve organiser associated with the session ID
+      let organiser = (await getOrganisers(data.id, "interaction", link))[0];
+
+      // Check if the provided PIN is valid for any organiser
+      if (!pinIsValid(data.pin, organiser.salt, organiser.pinHash)) {
+        throw Object.assign(new Error("Invalid PIN"), { statusCode: 401 });
+      }
+
+      // Retrieve the new submissions
+      const { fetchNewSubmissions } = require("./routes/fetchNewSubmissions");
+      let newSubmissions = await fetchNewSubmissions(link, data);
+
+      // Return the new submissions
+      newSubmissions = decodeObjectStrings(newSubmissions);
+      res.json(newSubmissions);
+    } catch (error) {
+      handleError(
+        error,
+        error.statusCode,
+        "interaction/fetchNewSubmissions",
+        "Failed to load new submissions",
+        res
+      );
+    } finally {
+      // Close the database connection if it was opened
+      if (link) await link.end();
+    }
+  }
+);
+
+/**
+ * @async
+ * @route POST /interaction/fetchDetailsJoin
+ * @memberof module:interaction
+ * @summary Loads session details for attendees.
+ *
+ * @description This route validates the incoming request and then returns the session details from the database,
+ * excluding the sensitive organiser details. If the request fails at any step, an appropriate error message is returned.
+ *
+ * @requires ./validate - Module for defining validation rules and sanitizing request data.
+ * @requires ./routes/fetchDetailsHost - Contains the logic for loading the session details.
+ *
+ * @param {object} req.body.data - The data containing the session ID.
+ * @returns {object} 200 - The session details object.
+ * @returns {object} 500 - Error message if retrieving the session details fails.
+ */
+router.post(
+  "/fetchDetailsJoin",
+  validate.fetchDetailsJoinRules, // Middleware for validating session request data
+  validate.validateRequest, // Middleware for validating the request based on the rules
+  async (req, res) => {
+    let link; // Database connection variable
+    try {
+      // Get the validated and sanitized data from the request
+      const data = matchedData(req);
+
+      // Open a connection to the database
+      link = await openDbConnection(dbConfig);
+
+      // Update the session with the provided data
+      const { fetchDetailsHost } = require("./routes/fetchDetailsHost");
+      let sessionDetails = await fetchDetailsHost(link, data.id);
+
+      // Return the session details
+      sessionDetails = decodeObjectStrings(sessionDetails);
+      res.json(sessionDetails);
+    } catch (error) {
+      handleError(
+        error,
+        error.statusCode,
+        "interaction/fetchDetailsJoin",
+        "Failed to load session details",
+        res
+      );
+    } finally {
+      // Close the database connection if it was opened
+      if (link) await link.end();
+    }
+  }
+);
+
+/**
+ * @async
+ * @route POST /interaction/fetchStatus
+ * @memberof module:interaction
+ * @summary Loads session status for attendees.
+ *
+ * @description This route validates the incoming request and then returns the session status from the database.
+ * If the request fails at any step, an appropriate error message is returned.
+ *
+ * @requires ./validate - Module for defining validation rules and sanitizing request data.
+ * @requires ./routes/fetchStatus - Contains the logic for loading the session status.
+ *
+ * @param {object} req.body.data - The data containing the session ID.
+ * @returns {object} 200 - The session status object.
+ * @returns {object} 500 - Error message if retrieving the session status fails.
+ */
+router.post(
+  "/fetchStatus",
+  validate.fetchDetailsJoinRules, // Middleware for validating session request data
+  validate.validateRequest, // Middleware for validating the request based on the rules
+  async (req, res) => {
+    let link; // Database connection variable
+    try {
+      // Get the validated and sanitized data from the request
+      const data = matchedData(req);
+
+      // Open a connection to the database
+      link = await openDbConnection(dbConfig);
+
+      // Update the session with the provided data
+      const { fetchStatus } = require("./routes/fetchStatus");
+      let status = await fetchStatus(link, data.id);
+
+      // Return the session details
+      status = decodeObjectStrings(status);
+      res.json(status);
+    } catch (error) {
+      handleError(
+        error,
+        error.statusCode,
+        "interaction/fetchStatus",
+        "Failed to load session status",
+        res
+      );
+    } finally {
+      // Close the database connection if it was opened
+      if (link) await link.end();
+    }
+  }
+);
+
+/**
+ * @async
+ * @route POST /interaction/insertSubmission
+ * @memberof module:interaction
+ * @summary Inserts a new submission.
+ *
+ * @description This route validates the incoming request and then inserts a new submission in the database.
+ * If the request fails at any step, an appropriate error message is returned.
+ *
+ * @requires ./validate - Module for defining validation rules and sanitizing request data.
+ * @requires ./routes/insertSubmission - Contains the logic for inserting the submission in the database.
+ *
+ * @param {object} req.body.data - The data containing the session ID, slideIndex and submission.
+ * @returns {object} 200 - A success message indicating that the submission was inserted.
+ * @returns {object} 500 - Error message if updating the session fails.
+ */
+router.post(
+  "/insertSubmission",
+  validate.insertSubmissionRules, // Middleware for validating update session request data
+  validate.validateRequest, // Middleware for validating the request based on the rules
+  async (req, res) => {
+    let link; // Database connection variable
+    try {
+      // Get the validated and sanitized data from the request
+      const data = matchedData(req);
+
+      // Open a connection to the database
+      link = await openDbConnection(dbConfig);
+
+      // Update the session with the provided data
+      const { insertSubmission } = require("./routes/insertSubmission");
+      await insertSubmission(link, data);
+
+      // Respond with a success message
+      res.json({ message: "Response submitted" });
+    } catch (error) {
+      handleError(
+        error,
+        error.statusCode,
+        "interaction/insertSubmission",
+        "Failed to submit response",
+        res
+      );
+    } finally {
+      // Close the database connection if it was opened
+      if (link) await link.end();
+    }
+  }
+);
+
+/**
+ * @async
+ * @route POST /interaction/deactivateSubmissions
+ * @memberof module:interaction
+ * @summary Deactivates submissions for a given session id.
+ *
+ * @description This route validates the incoming request, checks the provided organiser's PIN for validity,
+ * and then sets the active property of all associated submissions to false. This is used to clear the submission
+ * history prior to reusing a session or when updating the session. If the request fails at any step, an
+ * appropriate error message is returned.
+ *
+ * @requires ./validate - Module for defining validation rules and sanitizing request data.
+ * @requires ../utilities/pinUtilities - Utility functions for validating PINs.
+ * @requires ./routes/deactivateSubmissions - Contains the logic for deactivating the submissions in the database.
+ *
+ * @param {object} req.body.data - The data containing the session id and pin.
+ * @returns {object} 200 - A success message indicating that the submissions were deactivated.
+ * @returns {object} 401 - Error message if the PIN is invalid.
+ * @returns {object} 500 - Error message if deactivation fails.
+ */
+router.post(
+  "/deactivateSubmissions",
+  validate.fetchSubmissionCountRules, // Middleware for validating update request data
+  validate.validateRequest, // Middleware for validating the request based on the rules
+  async (req, res) => {
+    let link; // Database connection variable
+    try {
+      // Get the validated and sanitized data from the request
+      const data = matchedData(req);
+
+      // Open a connection to the database
+      link = await openDbConnection(dbConfig);
+
+      // Import utility functions for getting organisers and validating PINs
+      const {
+        getOrganisers,
+        pinIsValid,
+      } = require("../utilities/pinUtilities");
+
+      // Retrieve organiser associated with the session ID
+      let organiser = (await getOrganisers(data.id, "interaction", link))[0];
+
+      // Check if the provided PIN is valid for any organiser
+      if (!pinIsValid(data.pin, organiser.salt, organiser.pinHash)) {
+        throw Object.assign(new Error("Invalid PIN"), { statusCode: 401 });
+      }
+
+      // Update the session with the provided data
+      const {
+        deactivateSubmissions,
+      } = require("./routes/deactivateSubmissions");
+      await deactivateSubmissions(link, data);
+
+      // Respond with a success message
+      res.json({ message: "Submissions cleared" });
+    } catch (error) {
+      handleError(
+        error,
+        error.statusCode,
+        "interaction/deactivateSubmissions",
+        "Failed to clear submissions",
+        res
+      );
+    } finally {
+      // Close the database connection if it was opened
+      if (link) await link.end();
+    }
+  }
+);
+
+/**
+ * @async
+ * @route POST /interaction/uploadImage
+ * @memberof module:interaction
+ * @summary Uploads a new image.
+ *
+ * @description This route uploads a new image and returns the folder and filename to the client.
+ * If the request fails at any step, an appropriate error message is returned.
+ *
+ * @requires ./routes/uploadImageMiddleware - Contains the logic for processing and uploading the image.
+ *
+ * @param {object} formData - The data containing the image file.
+ * @returns {object} 200 - The folder and filename of the uploaded image.
+ * @returns {object} 500 - Error message if uploading the image fails.
+ */
+const { uploadImageMiddleware } = require("./routes/uploadImage");
+
+router.post("/uploadImage", uploadImageMiddleware, (req, res) => {
+  try {
+    const imagePath = req.processedImagePath;
+    if (!imagePath) {
+      throw Object.assign(new Error("Image processing failed."), {
+        statusCode: 500,
+      });
+    }
+
+    const filename = path.basename(imagePath);
+
+    res.json({ filename });
+  } catch (error) {
+    handleError(
+      error,
+      error.statusCode,
+      "interaction/uploadImage",
+      "Failed to upload image",
+      res
+    );
+  }
+});
+
+/**
+ * @async
+ * @route POST /interaction/fetchImage
+ * @memberof module:interaction
+ * @summary Fetches an image.
+ *
+ * @description This route fetches an image.
+ *
+ * @requires ./routes/fetchImage - Contains the logic for fetching the image.
+ *
+ * @param {object} data - The including the image folder and filename.
+ * @returns {file} 200 - The requested image.
+ * @returns {object} 500 - Error message if fetching the image fails.
+ */
+router.get(
+  "/fetchImage",
+  validate.fetchImageRules, // Middleware for validating update session request data
+  validate.validateRequest, // Middleware for validating the request based on the rules
+  async (req, res) => {
+    try {
+      // Get the validated and sanitized data from the request
+      const data = matchedData(req);
+
+      // Update the session with the provided data
+      const { fetchImage } = require("./routes/fetchImage");
+      await fetchImage(data, res);
+    } catch (error) {
+      handleError(
+        error,
+        error.statusCode,
+        "interaction/fetchImage",
+        "Failed to fetch image",
+        res
+      );
+    }
+  }
+);
+
+/**
+ * @async
+ * @route POST /interaction/deleteImage
+ * @memberof module:interaction
+ * @summary Deletes a specified image for a session.
+ *
+ * @description This route receives a session ID, filename, and organiser PIN. It validates the request and PIN,
+ * and then deletes the specified image from the server if found. Returns a success message or an error.
+ *
+ * @requires ./validate - Module for defining validation rules and sanitizing request data.
+ * @requires ../utilities/pinUtilities - Utility functions for validating PINs.
+ *
+ * @param {object} req.body.data - Contains `id`, `filename`, and `pin`.
+ * @returns {object} 200 - Success message if the image is deleted.
+ * @returns {object} 400 - Error if the file is not found.
+ * @returns {object} 401 - Error if the PIN is invalid.
+ * @returns {object} 500 - Error message for other failures.
+ */
+
+router.post(
+  "/deleteImage",
+  validate.deleteImageRules, // Middleware to validate id, filename, and pin
+  validate.validateRequest,
+  async (req, res) => {
+    let link;
+    try {
+      const data = matchedData(req);
+
+      link = await openDbConnection(dbConfig);
+      const {
+        getOrganisers,
+        pinIsValid,
+      } = require("../utilities/pinUtilities");
+
+      const organiser = (await getOrganisers(data.id, "interaction", link))[0];
+      if (!pinIsValid(data.pin, organiser.salt, organiser.pinHash)) {
+        throw Object.assign(new Error("Invalid PIN"), { statusCode: 401 });
+      }
+
+      const imagePath = path.join(
+        path.dirname(__dirname),
+        `interaction/uploads/images/${data.id}/${data.filename}`
+      );
+
+      console.error("Deleting image", data, imagePath);
+
+      if (!fs.existsSync(imagePath)) {
+        throw Object.assign(new Error("File not found"), { statusCode: 400 });
+      }
+
+      fs.unlinkSync(imagePath);
+
+      res.json({ message: "Image deleted" });
+    } catch (error) {
+      handleError(
+        error,
+        error.statusCode,
+        "interaction/deleteImage",
+        "Failed to delete image",
+        res
+      );
+    } finally {
+      if (link) await link.end();
+    }
+  }
+);
+
+/**
+ * @async
+ * @route POST /interaction/findMySessions
+ * @memberof module:interaction
+ * @summary Sends an email with a list of sessions for which that email is an organiser.
+ *
+ * @description
+ * This route allows a user to request an email with details of interaction sessions they are an
+ * organiser for. It validates the provided email, checks the database for sessions matching the
+ * criteria, and sends an email containing the session details. If no matching sessions are found,
+ * the email indicates this with an appropriate message.
+ *
+ * @requires ./validate - Module for defining validation rules and sanitizing request data.
+ * @requires ./routes/findMySessions
+ *
+ * @param {object} req.body.data - The data containing the email.
+ *
+ * @returns {object} 200 - A success message indicating that the email of sessions was sent.
+ * @returns {object} 500 - Error message if the process fails.
+ */
+router.post(
+  "/findMySessions",
+  validate.findMySessionsRules, // Middleware for validating find my sessions request data
+  validate.validateRequest, // Middleware for validating the request based on the rules
+  async (req, res) => {
+    let link; // Database connection variable
+    let data;
+    try {
+      // Get the validated and sanitized data from the request
+      data = matchedData(req);
+
+      // Open a connection to the database
+      link = await openDbConnection(dbConfig);
+
+      // Find and send the sessions
+      const { findMySessions } = require("./routes/findMySessions");
+      const sendMailFails = await findMySessions(data.email, link);
+
+      // Respond with a success message
+      res.json({
+        message: sendMailFails.length
+          ? ""
+          : "Please check your email for session details.",
+        sendMailFails,
+      });
+    } catch (error) {
+      handleError(
+        error,
+        error.statusCode,
+        "interaction/findMySessions",
+        "Failed to find sessions",
+        res,
+        false,
+        [JSON.stringify(data)]
       );
     } finally {
       // Close the database connection if it was opened

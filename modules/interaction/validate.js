@@ -26,6 +26,239 @@ const interestRules = [
     .withMessage("Email field must be a valid email address format."),
 ];
 
+/**
+ * Validation rules for the insertSession route
+ * @type {array}
+ */
+const insertSessionRules = [
+  check("title")
+    .notEmpty()
+    .withMessage("Session title must be provided.")
+    .isString()
+    .withMessage("Session title field must be data type [string].")
+    .escape(),
+
+  check("feedbackId")
+    .optional()
+    .isString()
+    .withMessage("Feedback ID field (if provided) must be data type [string].")
+    .escape(),
+
+  check("name")
+    .notEmpty()
+    .withMessage("Facilitator name must be provided.")
+    .isString()
+    .withMessage("Session title field must be data type [string].")
+    .escape(),
+
+  check("email")
+    .isEmail()
+    .withMessage("Email field must be a valid email address format."),
+];
+
+/**
+ * Validation rules for the updateSession route
+ * @type {array}
+ */
+const updateSessionRules = [
+  check("id")
+    .isString()
+    .withMessage("ID field must be data type [string].")
+    .escape(),
+
+  check("pin").isInt().withMessage("PIN field must be data type [integer]."),
+
+  check("title")
+    .notEmpty()
+    .withMessage("Session title must be provided.")
+    .isString()
+    .withMessage("Session title field must be data type [string].")
+    .escape(),
+
+  check("feedbackId")
+    .optional()
+    .isString()
+    .withMessage("Feedback ID field (if provided) must be data type [string].")
+    .escape(),
+
+  check("name")
+    .notEmpty()
+    .withMessage("Facilitator name must be provided.")
+    .isString()
+    .withMessage("Session title field must be data type [string].")
+    .escape(),
+
+  check("email")
+    .isEmail()
+    .withMessage("Email field must be a valid email address format."),
+
+  check("slides")
+    .isArray()
+    .withMessage("Slides field must be data type [array]."),
+
+  check("slides.*.content.layout")
+    .notEmpty()
+    .withMessage("Slide content layout must be provided.")
+    .isString()
+    .withMessage("Slide content layout field must be data type [string].")
+    .escape(),
+
+  check("slides.*.interaction.type")
+    .notEmpty()
+    .withMessage("Slide interaction type must be provided.")
+    .isString()
+    .withMessage("Slide interaction type field must be data type [string].")
+    .escape(),
+
+  check("slides.*.heading")
+    .notEmpty()
+    .withMessage("Slide heading must be provided.")
+    .isString()
+    .withMessage("Slide heading field must be data type [string].")
+    .escape(),
+
+  check("slides.*.content")
+    .isObject()
+    .withMessage("Slide content field must be data type [object]."),
+
+  check("slides.*.interaction")
+    .isObject()
+    .withMessage("Slide interaction field must be data type [object]."),
+];
+
+/**
+ * Validation rules for the fetchDetailsHost route
+ * @type {array}
+ */
+const fetchDetailsHostRules = [
+  check("id")
+    .isString()
+    .withMessage("ID field must be data type [string].")
+    .escape(),
+
+  check("pin").isInt().withMessage("PIN field must be data type [integer]."),
+];
+
+/**
+ * Validation rules for the updateStatus route
+ * @type {array}
+ */
+const updateStatusRules = [
+  check("id")
+    .isString()
+    .withMessage("ID field must be data type [string].")
+    .escape(),
+
+  check("pin").isInt().withMessage("PIN field must be data type [integer]."),
+
+  check("status")
+    .isObject()
+    .withMessage("Status field must be data type [object]."),
+];
+
+/**
+ * Validation rules for the fetchSubmissionCount route.
+ * @type {Array}
+ */
+const fetchSubmissionCountRules = [
+  ...fetchDetailsHostRules,
+
+  check("isPreview")
+    .isBoolean()
+    .withMessage("Preview status field must be data type [boolean]."),
+];
+
+/**
+ * Validation rules for the fetchNewSubmissions route
+ * @type {array}
+ */
+const fetchNewSubmissionsRules = [
+  check("id")
+    .isString()
+    .withMessage("ID field must be data type [string].")
+    .escape(),
+
+  check("pin").isInt().withMessage("PIN field must be data type [integer]."),
+
+  check("slideIndex")
+    .isInt()
+    .withMessage("Slide index field must be data type [integer]."),
+
+  check("lastSubmissionId")
+    .isInt()
+    .withMessage("Last submission ID field must be data type [integer]."),
+
+  check("isPreview")
+    .isBoolean()
+    .withMessage("Preview status field must be data type [boolean]."),
+];
+
+/**
+ * Validation rules for the fetchDetailsJoin route
+ * @type {array}
+ */
+const fetchDetailsJoinRules = [
+  check("id")
+    .isString()
+    .withMessage("ID field must be data type [string].")
+    .escape(),
+];
+
+/**
+ * Validation rules for the insertSubmission route
+ * @type {array}
+ */
+const insertSubmissionRules = [
+  check("id")
+    .isString()
+    .withMessage("ID field must be data type [string].")
+    .escape(),
+
+  check("slideIndex")
+    .isInt()
+    .withMessage("Slide index field must be data type [integer]."),
+
+  check("response").exists().withMessage("Response cannot be empty.").escape(),
+
+  check("isPreview")
+    .isBoolean()
+    .withMessage("Preview status field must be data type [boolean]."),
+];
+
+/**
+ * Validation rules for the fetchImage route
+ * @type {array}
+ */
+const fetchImageRules = [
+  check("id")
+    .isString()
+    .withMessage("ID field must be data type [string].")
+    .escape(),
+
+  check("filename")
+    .isString()
+    .withMessage("Image filename field must be data type [string].")
+    .escape(),
+];
+
+/**
+ * Validation rules for the deleteImageRules route
+ * @type {array}
+ */
+const deleteImageRules = [
+  check("id")
+    .isString()
+    .withMessage("ID field must be data type [string].")
+    .escape(),
+
+  check("pin").isInt().withMessage("PIN field must be data type [integer]."),
+
+  check("filename")
+    .isString()
+    .withMessage("Image filename field must be data type [string].")
+    .escape(),
+];
+
 // Middleware function to validate the request
 const validateRequest = (req, res, next) => {
   try {
@@ -47,7 +280,28 @@ const validateRequest = (req, res, next) => {
   }
 };
 
+/**
+ * Validation rules for the findMySessions route
+ * @type {array}
+ */
+const findMySessionsRules = [
+  check("email")
+    .isEmail()
+    .withMessage("Email field must be a valid email address format."),
+];
+
 module.exports = {
   interestRules,
+  insertSessionRules,
+  updateSessionRules,
+  fetchDetailsHostRules,
+  updateStatusRules,
+  fetchSubmissionCountRules,
+  fetchNewSubmissionsRules,
+  fetchDetailsJoinRules,
+  insertSubmissionRules,
+  fetchImageRules,
+  deleteImageRules,
+  findMySessionsRules,
   validateRequest,
 };

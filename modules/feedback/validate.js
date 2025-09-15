@@ -42,7 +42,7 @@ const insertSessionRules = [
     .notEmpty()
     .withMessage("Facilitator name must be provided.")
     .isString()
-    .withMessage("Session title field must be data type [string].")
+    .withMessage("Facilitator name field must be data type [string].")
     .escape(),
 
   check("multipleDates")

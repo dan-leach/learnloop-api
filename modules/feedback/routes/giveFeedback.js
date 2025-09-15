@@ -197,9 +197,14 @@ const insertFeedbackIntoDatabase = async (link, id, feedback, questions) => {
     throw new Error("Database connection failed.");
   }
 
+  const appVersion = {
+    clientVersion: process.env.clientVersion,
+    apiVersion: process.env.apiVersion,
+  };
+
   const query = `INSERT INTO ${config.feedback.tables.tblSubmissions} 
-      (id, positive, negative, questions, score) 
-      VALUES (?, ?, ?, ?, ?)`;
+      (id, positive, negative, questions, score, appVersion) 
+      VALUES (?, ?, ?, ?, ?, ?)`;
 
   await link.execute(query, [
     id,
@@ -207,6 +212,7 @@ const insertFeedbackIntoDatabase = async (link, id, feedback, questions) => {
     feedback.negative,
     questions,
     feedback.score,
+    appVersion,
   ]);
 
   return true;

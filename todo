@@ -1,18 +1,2 @@
-Activate maintenance mode /
-Download backup v5 tables /
-Re-run GO /
-Alter interaction module on homepage /
-Add update notice /
-Update versioning to v5.3
-Remove GO routes
-Check all api changes committed
-Move existing www to legacy folder
-Deploy api as build version
-Deploy v5.3 client as build version
-Check isLead and canEdit working correctly
-Restrict CORS on api htaccess
-Check email links
-Test selection of sessions including subsessions and questions, using all different routes
-Final tests including mobile
-Remove maintenance mode
-Consider emails to recent users
+Before deploy:
+1. reactivate 500 error email notifications in routeUtilities

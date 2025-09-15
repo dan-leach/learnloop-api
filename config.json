@@ -1,9 +1,20 @@
 {
-  "version": "5.3",
   "devMode": false,
-  "author": "Dan Leach",
-  "web": "https://github.com/dan-leach",
-  "repo": "https://github.com/dan-leach/learnloop/tree/v5",
+  "author": {
+    "name": "Dan Leach",
+    "email": "mail@learnloop.co.uk",
+    "url": "https://danleach.uk"
+  },
+  "repo": {
+    "client": {
+      "main": "https://github.com/dan-leach/learnloop",
+      "changelog": "https://github.com/dan-leach/learnloop/wiki/Changelog"
+    },
+    "api": {
+      "main": "https://github.com/dan-leach/learnloop-api",
+      "changelog": "https://github.com/dan-leach/learnloop-api/wiki/Changelog"
+    }
+  },
   "email": "mail@learnloop.co.uk",
   "noreplyemail": "noreply@learnloop.co.uk",
   "feedback": {
@@ -61,81 +72,120 @@
     },
     "create": {
       "slides": {
-        "types": {
-          "singleChoice": {
-            "name": "Single choice",
-            "id": "singleChoice",
-            "isInteractive": true,
-            "settings": {
-              "charts": ["bar", "doughnut"],
-              "optionsLimit": 10,
-              "submissionLimit": 1,
-              "hideResponses": false
+        "interaction": {
+          "types": {
+            "trueFalse": {
+              "name": "True / false",
+              "id": "trueFalse",
+              "defaultOptions": [
+                {
+                  "text": "true",
+                  "correct": false,
+                  "incorrect": false
+                },
+                {
+                  "text": "false",
+                  "correct": false,
+                  "incorrect": false
+                }
+              ],
+              "settings": {
+                "charts": ["bar", "doughnut"],
+                "optionsLimit": 2,
+                "submissionLimit": 1,
+                "hideResponses": false
+              }
+            },
+            "multipleChoice": {
+              "name": "Multiple choice",
+              "id": "multipleChoice",
+              "settings": {
+                "charts": ["bar", "doughnut"],
+                "optionsLimit": 10,
+                "selectedLimit": {
+                  "min": 1,
+                  "max": 1
+                },
+                "submissionLimit": 1,
+                "hideResponses": false
+              }
+            },
+            "freeText": {
+              "name": "Free text",
+              "id": "freeText",
+              "settings": {
+                "optionsLimit": 0,
+                "characterLimit": {
+                  "min": 1,
+                  "max": 200
+                },
+                "submissionLimit": 10,
+                "hideResponses": false
+              }
+            },
+            "wordCloud": {
+              "name": "Word cloud",
+              "id": "wordCloud",
+              "settings": {
+                "optionsLimit": 0,
+                "characterLimit": {
+                  "min": 1,
+                  "max": 500
+                },
+                "submissionLimit": 10,
+                "hideResponses": false
+              }
             }
           },
-          "multipleChoice": {
-            "name": "Multiple choice",
-            "id": "multipleChoice",
-            "isInteractive": true,
-            "settings": {
-              "charts": ["bar", "doughnut"],
-              "optionsLimit": 10,
-              "selectedLimit": {
-                "min": 1,
-                "max": 1
-              },
-              "submissionLimit": 1,
-              "hideResponses": false
+          "submissionLimitMax": 100,
+          "minimumOptions": 2
+        },
+        "content": {
+          "layouts": {
+            "textStrings": {
+              "name": "Text",
+              "id": "textStrings",
+              "hasTextStrings": true,
+              "hasImages": false,
+              "hasVideo": false,
+              "showContentForAttendeesDefault": true
+            },
+            "gallery": {
+              "name": "Image gallery",
+              "id": "gallery",
+              "hasTextStrings": false,
+              "hasImages": true,
+              "hasVideo": false,
+              "maxImages": 12,
+              "maxFilesize": 10000000,
+              "showContentForAttendeesDefault": true
+            },
+            "video": {
+              "name": "Video",
+              "id": "video",
+              "hasTextStrings": false,
+              "hasImages": false,
+              "hasVideo": true,
+              "maxVideos": 1,
+              "showContentForAttendeesDefault": false
+            },
+            "textStringsWithImage": {
+              "name": "Text with image",
+              "id": "textStringsWithImage",
+              "hasTextStrings": true,
+              "hasImages": true,
+              "hasVideo": false,
+              "maxImages": 1,
+              "maxFilesize": 20000000,
+              "showContentForAttendeesDefault": true
             }
-          },
-          "freeText": {
-            "name": "Free text",
-            "id": "freeText",
-            "isInteractive": true,
-            "settings": {
-              "optionsLimit": 0,
-              "characterLimit": {
-                "min": 1,
-                "max": 200
-              },
-              "submissionLimit": 10,
-              "hideResponses": false
-            }
-          },
-          "wordCloud": {
-            "name": "Word cloud",
-            "id": "wordCloud",
-            "isInteractive": true,
-            "settings": {
-              "optionsLimit": 0,
-              "characterLimit": {
-                "min": 1,
-                "max": 500
-              },
-              "submissionLimit": 10,
-              "hideResponses": false
-            }
-          },
-          "static": {
-            "name": "Static",
-            "id": "static",
-            "isInteractive": false
           }
-        },
-        "submissionLimitMax": 100,
-        "minimumOptions": 2,
-        "images": {
-          "max": 10,
-          "maxFilesize": 20000000
-        },
-        "videos": {
-          "max": 1
         }
       }
     },
     "tables": {
-      "tblSessions": "tbl_interaction_sessions_v5",
-      "tblSubmissions": "tbl_interaction_submissions_v5"
+      "tblSessions": "tbl_interaction_sessions_v6",
+      "tblSubmissions": "tbl_interaction_submissions_v6"
     }
   },
   "client": {
@@ -421,7 +471,8 @@
   },
   "api": {
     "url": "https://api.learnloop.co.uk/",
-    "imagesUrl": "https://api.learnloop.co.uk/interaction/uploads/img/",
+    "uploadImageUrl": "https://api.learnloop.co.uk/interaction/uploadImage/",
+    "fetchImageUrl": "https://api.learnloop.co.uk/interaction/fetchImage/",
     "timeoutDuration": 15000,
     "showConsole": true,
     "notificationTimeoutHours": 2

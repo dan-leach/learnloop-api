@@ -1,11 +1,11 @@
 /**
  * @module findMySessions
- * @memberof module:feedback
- * @summary Module for sending an email to an organiser or facilitator containing all their sessions.
+ * @memberof module:interaction
+ * @summary Module for sending an email to an organiser containing all their sessions.
  *
  * @description
  * This module retrieves session details associated with a given email, sends an email to the organiser
- * or facilitator containing their session history, and provides a structured response.
+ * containing their session history, and provides a structured response.
  *
  * @requires ../../../config.json - Configuration file containing database table settings for session data retrieval.
  * @requires ../../utilities/mailUtilities - Utilities for sending email messages.
@@ -22,7 +22,7 @@ const dateUtilities = require("../../utilities/dateUtilities");
  * @async
  * @function findMySessions
  * @memberof module:findMySessions
- * @summary Retrieves and sends an email with session details for a given organiser or facilitator email.
+ * @summary Retrieves and sends an email with session details for a given organiser email.
  *
  * @param {string} email - The email address to search for in the sessions' organiser list.
  * @param {object} link - Database connection object.
@@ -75,7 +75,7 @@ async function selectSessionsByEmail(email, link) {
   }
   // Query the database for sessions where the email appears in the `organisers` column
   const [rows] = await link.execute(
-    `SELECT * FROM ${config.feedback.tables.tblSessions} WHERE organisers LIKE ?`,
+    `SELECT * FROM ${config.interaction.tables.tblSessions} WHERE organisers LIKE ?`,
     [`%${email}%`]
   );
 
@@ -103,7 +103,7 @@ const emailOrganiserSessions = async (foundSessions, organiser) => {
   // Construct the email body
   const body = buildMailBody(foundSessions, organiser, appURL, shortenedAppURL);
 
-  const heading = "Your feedback session history"; // Email heading
+  const heading = "Your interaction session history"; // Email heading
 
   // Generate the HTML for the email
   const html = mailUtilities.buildMailHTML(
@@ -139,11 +139,11 @@ const buildMailBody = (foundSessions, organiser, appURL, shortenedAppURL) => {
   let body = `<p>Hello ${organiser.name},</p>`;
 
   if (!foundSessions.length) {
-    body += `There were no feedback sessions found for this email address.`;
+    body += `There were no interaction sessions found for this email address.`;
   } else {
     body += `
-      <p>Here are the details of your feedback sessions on LearnLoop requested using 'Find My Sessions'.</p>
-      <p>Go to <a href="${appURL}">${shortenedAppURL}</a> and use the session ID and PIN to view submitted feedback or the attendance register. A link is provided to reset the PIN if you don't have the original.</p>`;
+      <p>Here are the details of your interaction sessions on LearnLoop requested using 'Find My Sessions'.</p>
+      <p>Go to <a href="${appURL}">${shortenedAppURL}</a> and use the session ID and PIN to host your session. A link is provided to reset the PIN if you don't have the original.</p>`;
 
     for (const session of foundSessions) {
       body += `
@@ -152,7 +152,7 @@ const buildMailBody = (foundSessions, organiser, appURL, shortenedAppURL) => {
         session.id
       } | Status: ${
         session.closed ? "closed" : "open"
-      } | <a href="${appURL}/feedback/resetPIN/${
+      } | <a href="${appURL}/interaction/resetPIN/${
         session.id
       }">Reset PIN</a></p>`;
     }
