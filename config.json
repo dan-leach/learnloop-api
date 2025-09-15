@@ -1,7 +1,10 @@
 {
   "devMode": false,
-  "author": "Dan Leach",
-  "web": "https://github.com/dan-leach",
+  "author": {
+    "name": "Dan Leach",
+    "email": "mail@learnloop.co.uk",
+    "url": "https://danleach.uk"
+  },
   "repo": {
     "client": {
       "main": "https://github.com/dan-leach/learnloop",
