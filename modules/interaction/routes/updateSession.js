@@ -45,6 +45,7 @@ const updateSession = async (link, data) => {
     preview: false,
   };
 
+  /*
   const betaTesters = require("../../private/betaTesters.json");
   if (!betaTesters.includes(organiser.email)) {
     throw Object.assign(
@@ -52,6 +53,7 @@ const updateSession = async (link, data) => {
       { statusCode: 403 }
     );
   }
+    */
 
   // Insert the updated session data into the database
   await updateSessionInDatabase(link, data, organiser, status);
