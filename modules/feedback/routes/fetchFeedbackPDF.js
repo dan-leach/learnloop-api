@@ -41,7 +41,7 @@ const fetchFeedbackPDF = async (id, res, link) => {
   const updateSessionRoute = require("./updateSession");
   const sessionDetails = await updateSessionRoute.getOldSessionDetails(
     id,
-    link
+    link,
   );
 
   const { viewFeedback } = require("./viewFeedback");
@@ -55,9 +55,13 @@ const fetchFeedbackPDF = async (id, res, link) => {
 
   // Set headers for file download
   res.setHeader("Content-Type", "application/pdf");
+
+  // Sanitize the session title for use in the filename
+  const safeTitle = decode(sessionDetails.title).replace(/[^\x20-\x7E]/g, "");
+
   res.setHeader(
     "Content-Disposition",
-    `attachment; filename=${decode(sessionDetails.title)}-feedback-report.pdf`
+    `attachment; filename="${safeTitle}-feedback-report.pdf"`,
   );
 
   // Pipe the PDF into the response
@@ -87,8 +91,8 @@ const fetchFeedbackPDF = async (id, res, link) => {
     .fontSize(14)
     .text(
       `For '${decode(sessionDetails.title)}' by ${decode(
-        sessionDetails.name
-      )} on ${dateUtilities.formatDateUK(new Date(sessionDetails.date))}`
+        sessionDetails.name,
+      )} on ${dateUtilities.formatDateUK(new Date(sessionDetails.date))}`,
     )
     .moveDown(0.3);
 
